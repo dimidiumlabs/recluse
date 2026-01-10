@@ -1,40 +1,27 @@
-use axum::{Router, extract::State, http, response, routing};
-use std::sync;
+use axum::Router;
+use std::sync::Arc;
 
-struct GlobalState {
-    jinja: minijinja::Environment<'static>,
-}
+mod controller_web;
+mod controller_zig;
+mod service_config;
+mod service_storage;
+mod service_upstream;
 
 #[tokio::main]
 async fn main() {
-    // init template engine and add templates
-    let mut jinja = minijinja::Environment::new();
-    jinja
-        .add_template("index", include_str!("./index.html"))
-        .unwrap();
+    let config = Arc::new(service_config::ConfigService::new());
+    let storage = Arc::new(service_storage::StorageService::new(config.clone()));
+    let upstream = Arc::new(service_upstream::UpstreamService::new());
 
-    let app_state = sync::Arc::new(GlobalState { jinja });
+    let web_controller = Arc::new(controller_web::WebController::new());
+    let zig_controller = Arc::new(controller_zig::ZigController::new(storage, upstream));
 
     let app = Router::new()
-        .route("/", routing::get(handler_index))
-        .with_state(app_state);
+        .merge(web_controller.router())
+        .merge(zig_controller.router());
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(config.addr()).await.unwrap();
 
     println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
-}
-
-async fn handler_index(
-    State(state): State<sync::Arc<GlobalState>>,
-) -> Result<response::Html<String>, http::StatusCode> {
-    let template = state.jinja.get_template("index").unwrap();
-
-    let rendered = template
-        .render(minijinja::context! {})
-        .unwrap();
-
-    Ok(response::Html(rendered))
 }
