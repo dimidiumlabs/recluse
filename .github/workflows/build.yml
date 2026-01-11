@@ -22,8 +22,12 @@ jobs:
       - name: Check licenses
         uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
 
+      - name: Check dependencies
+        uses: EmbarkStudios/cargo-deny-action@3fd3802e88374d3fe9159b834c7714ec57d6c979 # 0.19.0
+
       - name: Check formatting
         run: cargo fmt --all --check
+
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 

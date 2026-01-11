@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+[licenses]
+allow = [
+  # Dilution licenses available without restrictions
+  "MIT",
+  "Apache-2.0",
+  "BSD-3-Clause",
+
+  # GPL versions
+  "GPL-2.0-or-later",
+  "GPL-3.0-or-later",
+  "LGPL-2.0-or-later",
+  "LGPL-2.1-or-later",
+  "LGPL-3.0-or-later",
+]
+exceptions = [
+  # The project itself is distributed under the AGPL, but avoid it in dependencies
+  { crate = "zorian", allow = ["AGPL-3.0-or-later"] },
+
+  # Acceptable custom free licenses (for specific products only)
+  { crate = "foldhash", allow = ["Zlib"] },
+  { crate = "unicode-ident", allow = ["Unicode-3.0"] },
+]
+unused-allowed-license = "allow"
+
+[sources]
+unknown-git = "deny"
+unknown-registry = "deny"
