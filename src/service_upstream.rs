@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use bytes::Bytes;
 use http_body_util::{BodyExt, Empty};
 use hyper::{Request, http};
@@ -13,7 +16,6 @@ pub struct DownloadRequest {
 #[derive(Clone)]
 pub struct File {
     pub bytes: Bytes,
-    pub content_type: Option<String>,
 }
 
 pub struct UpstreamService {
@@ -47,21 +49,12 @@ impl UpstreamService {
             return Err(status);
         }
 
-        let content_type = parts
-            .headers
-            .get(http::header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .map(|value| value.to_string());
-
         let bytes = body
             .collect()
             .await
             .map_err(|_| http::StatusCode::GATEWAY_TIMEOUT)?
             .to_bytes();
 
-        Ok(File {
-            bytes,
-            content_type,
-        })
+        Ok(File { bytes })
     }
 }

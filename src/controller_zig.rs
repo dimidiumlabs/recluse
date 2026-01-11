@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use axum::{Router, body, extract, http, response, routing};
 use std::sync::{Arc, OnceLock};
 
@@ -83,7 +86,10 @@ impl ZigController {
         }
     }
 
-    fn build_response(status: http::StatusCode, entry: service_storage::File) -> response::Response {
+    fn build_response(
+        status: http::StatusCode,
+        entry: service_storage::File,
+    ) -> response::Response {
         response::Response::builder()
             .status(status)
             .header(http::header::CONTENT_TYPE, "application/octet-stream")
