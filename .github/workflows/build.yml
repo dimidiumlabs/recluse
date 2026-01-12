@@ -12,6 +12,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RELEASE_TAG: dev
 
 jobs:
   lint:
@@ -53,6 +54,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
 
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec #v6.3.0
+        with:
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+
       - run: cargo build --release
       - run: cargo test --all-features --release --locked
 
@@ -63,14 +70,22 @@ jobs:
 
       - name: Build packages
         run: |
+          export SIGNING_PRIVATE_KEY="/tmp/private.asc"
+          printf '%s' "$GPG_PRIVATE_KEY" > $SIGNING_PRIVATE_KEY
+          chmod 600 $SIGNING_PRIVATE_KEY
+
           PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-          export VERSION="${PKG_VERSION}-dev.$(date +%s)+$(git rev-parse --short HEAD)"
+          export VERSION="${PKG_VERSION}~dev.$(git log -1 --format=%ct)"
           export ARCH=${{ matrix.arch }}
 
           mkdir -p dist/
-          for pkg in deb rpm archlinux; do
+          for pkg in deb rpm; do
             nfpm package --packager $pkg --target dist/
           done
+        env:
+          GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          NFPM_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
@@ -92,8 +107,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git tag -f dev
-          git push origin --force tag dev
+          git tag -f ${{ env.RELEASE_TAG }}
+          git push origin --force tag ${{ env.RELEASE_TAG }}
 
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
@@ -101,11 +116,24 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Export GPG public key
+        run: printf '%s' "$GPG_PUBLIC_KEY" > dist/public.gpg
+        env:
+          GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+
+      - name: Delete old release assets
+        run: |
+          for asset in $(gh release view ${{ env.RELEASE_TAG }} --json assets --jq '.assets[].name' 2>/dev/null || true); do
+            gh release delete-asset ${{ env.RELEASE_TAG }} "$asset" --yes
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
-          name: dev
-          tag_name: dev
+          name: ${{ env.RELEASE_TAG }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: dist/*
           body: |
             Last successful build from `main` branch.

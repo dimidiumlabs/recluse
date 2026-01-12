@@ -8,24 +8,27 @@ Please note that the project is in its infancy and is **not** intended for produ
 
 **Use pre-bundled dev build:**
 
+1. Install dependencies:
+    - Fedora/RedHat: `sudo dnf install yum-utils`
+    - Debian/Ubuntu: `sudo apt install apt-transport-https ca-certificates curl gnupg`
 1. Download the package for your distribution from the [releases page](https://github.com/mrdimidium/Zorian/releases/tag/dev)
 1. Install via system package manager:
 
     ```bash
     # Debian/Ubuntu
-    sudo dpkg -i zorian_*.deb
-    # Fedora
-    sudo dnf install zorian-*.rpm
-    # Arch Linux
-    sudo pacman -U zorian-*.pkg.tar.zst
+    curl -fsSL https://github.com/mrdimidium/Zorian/releases/download/dev/public.gpg | sudo gpg --dearmor -o /usr/share/keyrings/zorian.gpg
+    sudo dpkg -i zorian_*.deb     
+
+    # Fedora/RedHat
+    sudo rpm --import https://github.com/mrdimidium/Zorian/releases/download/dev/public.gpg
+    sudo dnf install zorian-*.rpm 
     ```
 
-1. start systemd service: `sudo systemctl enable --now zorian`
+1. Start systemd service: `sudo systemctl enable --now zorian`
 
 **Build from source:**
 
 1. Install build dependencies:
-    - Arch Linux: `sudo pacman -S base-devel openssl pkg-config`
     - Fedora/RedHat: `sudo dnf install gcc openssl-devel pkg-config`
     - Debian/Ubuntu: `sudo apt install build-essential libssl-dev pkg-config`
 1. Clone and build via cargo:
@@ -38,7 +41,6 @@ Please note that the project is in its infancy and is **not** intended for produ
     # Build linux package packages via nfpm (ihttps://nfpm.goreleaser.com/)
     nfpm package -p deb --target dist/
     nfpm package -p rpm --target dist/
-    nfpm package -p archlinux --target dist/
 
     # Install binary manually
     sudo groupadd --system zorian

@@ -44,8 +44,18 @@ contents:
 
 
 scripts:
+  preinstall: pkg/scripts/preinstall.sh
   postinstall: pkg/scripts/postinstall.sh
   preremove: pkg/scripts/preremove.sh
 
+deb:
+  signature:
+    method: debsign
+    key_id: ${GPG_KEY_ID}
+    key_file: ${SIGNING_PRIVATE_KEY}
+
 rpm:
   group: System Environment/Daemons
+  signature:
+    key_id: ${GPG_KEY_ID}
+    key_file: ${SIGNING_PRIVATE_KEY}
