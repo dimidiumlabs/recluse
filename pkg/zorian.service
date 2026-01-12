@@ -4,25 +4,23 @@
 [Unit]
 Description=Zorian server (tiny packages caching proxy)
 Requires=network-online.target
-Wants=time-sync.target
 After=time-sync.target network-online.target remote-fs.target nss-lookup.target
+Wants=time-sync.target
 
 [Service]
 Type=exec
 User=zorian
 Group=zorian
-ExecPaths=/usr/local/bin/zorian /usr/lib
-ExecStart=/usr/local/bin/zorian --config=/etc/zorian.toml --pid-file=%t/%p/%p.pid
-LimitCORE=infinity
-LimitNOFILE=500000
 Restart=always
 RestartSec=30
+ExecPaths=/usr/local/bin/zorian /usr/lib
+ExecStart=/usr/local/bin/zorian --config=/etc/zorian.toml
+LimitCORE=infinity
+LimitNOFILE=500000
 # %p is resolved to the systemd unit name
 RuntimeDirectory=%p 
 
 LockPersonality=yes
-MemoryDenyWriteExecute=yes
-NoExecPaths=/
 NoNewPrivileges=yes
 PrivateDevices=yes
 PrivateTmp=true

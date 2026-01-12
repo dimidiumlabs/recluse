@@ -35,6 +35,14 @@ contents:
     file_info:
       mode: 0644
 
+  - dst: /var/lib/zorian
+    type: dir
+    file_info:
+      mode: 0755
+      owner: zorian
+      group: zorian
+
+
 scripts:
   postinstall: pkg/scripts/postinstall.sh
   preremove: pkg/scripts/preremove.sh
