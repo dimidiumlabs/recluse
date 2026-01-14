@@ -188,7 +188,6 @@ impl ZigController {
             .upstream
             .fetch(service_upstream::DownloadRequest { url })
             .await?;
-        // bytes: entry.bytes.clone(),
 
         match controller.storage.put("zig", &filename, &entry.bytes).await {
             Ok(()) => {}
