@@ -171,9 +171,12 @@ impl ZigController {
         let tarball = Tarball::parse(&filename).map_err(|_| http::StatusCode::NOT_FOUND)?;
         let url = tarball.upstream_url(controller.config.appname());
 
-        match controller.storage.get(&filename).await {
+        match controller.storage.get("zig", &filename).await {
             Ok(Some(entry)) => {
-                return Ok(Self::build_response(http::StatusCode::OK, entry));
+                return Ok(Self::build_response(
+                    http::StatusCode::OK,
+                    entry.file_bytes.0,
+                ));
             }
             Ok(None) => {}
             Err(_) => {
@@ -185,28 +188,23 @@ impl ZigController {
             .upstream
             .fetch(service_upstream::DownloadRequest { url })
             .await?;
-        let cache_entry = service_storage::File {
-            bytes: entry.bytes.clone(),
-        };
+        // bytes: entry.bytes.clone(),
 
-        match controller.storage.put(&filename, &cache_entry).await {
+        match controller.storage.put("zig", &filename, &entry.bytes).await {
             Ok(()) => {}
             Err(_) => {
                 return Err(http::StatusCode::OK);
             }
         }
 
-        Ok(Self::build_response(http::StatusCode::OK, cache_entry))
+        Ok(Self::build_response(http::StatusCode::OK, entry.bytes))
     }
 
-    fn build_response(
-        status: http::StatusCode,
-        entry: service_storage::File,
-    ) -> response::Response {
+    fn build_response(status: http::StatusCode, bytes: bytes::Bytes) -> response::Response {
         response::Response::builder()
             .status(status)
             .header(http::header::CONTENT_TYPE, "application/octet-stream")
-            .body(body::Body::from(entry.bytes))
+            .body(body::Body::from(bytes))
             .unwrap()
     }
 }

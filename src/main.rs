@@ -46,11 +46,18 @@ async fn main() {
         None => service_config::ConfigService::default(),
     });
     config.validate().unwrap_or_else(|e| {
-        eprintln!("error: {e}");
+        eprintln!("config error: {e}");
         std::process::exit(1);
     });
 
-    let storage = Arc::new(service_storage::StorageService::new(config.clone()));
+    let storage = Arc::new(
+        service_storage::StorageService::new(config.clone())
+            .await
+            .unwrap_or_else(|e| {
+                eprintln!("storage error: {e}");
+                std::process::exit(1);
+            }),
+    );
     let upstream = Arc::new(service_upstream::UpstreamService::new());
 
     let web_controller = Arc::new(controller_web::WebController::new());

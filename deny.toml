@@ -8,6 +8,10 @@ allow = [
   "Apache-2.0",
   "BSD-3-Clause",
 
+  # Custom but acceptable free licenses
+  "Zlib",
+  "Unicode-3.0",
+
   # GPL versions
   "GPL-2.0-or-later",
   "GPL-3.0-or-later",
@@ -18,10 +22,6 @@ allow = [
 exceptions = [
   # The project itself is distributed under the AGPL, but avoid it in dependencies
   { crate = "zorian", allow = ["AGPL-3.0-or-later"] },
-
-  # Acceptable custom free licenses (for specific products only)
-  { crate = "foldhash", allow = ["Zlib"] },
-  { crate = "unicode-ident", allow = ["Unicode-3.0"] },
 ]
 unused-allowed-license = "allow"
 
