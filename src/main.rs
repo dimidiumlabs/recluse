@@ -3,8 +3,8 @@
 
 mod backends;
 mod config;
+mod proxy;
 mod storage;
-mod upstream;
 
 use std::future::Future;
 use std::path::PathBuf;
@@ -93,7 +93,7 @@ async fn main() {
     });
 
     let storage = Arc::new(storage::StorageService::new(config.clone()).await.unwrap());
-    let upstream = Arc::new(upstream::UpstreamService::new());
+    let upstream = Arc::new(proxy::ProxyService::new());
 
     let web_controller = Arc::new(WebController::default());
     let zig_controller = Arc::new(ZigController::new(
@@ -167,7 +167,11 @@ where
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        Box::pin(log_request(self.inner.clone(), req))
+        let clone = self.inner.clone();
+
+        // take the service that was ready
+        let inner = std::mem::replace(&mut self.inner, clone);
+        Box::pin(async move { log_request(inner, req).await })
     }
 }
 

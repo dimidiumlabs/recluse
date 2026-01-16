@@ -9,8 +9,8 @@ use thiserror::Error;
 use tracing::error;
 
 use crate::config;
+use crate::proxy;
 use crate::storage;
-use crate::upstream;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Archive {
@@ -150,14 +150,14 @@ impl<'a> Tarball<'a> {
 pub struct ZigController {
     config: Arc<config::ConfigService>,
     storage: Arc<storage::StorageService>,
-    upstream: Arc<upstream::UpstreamService>,
+    upstream: Arc<proxy::ProxyService>,
 }
 
 impl ZigController {
     pub fn new(
         config: Arc<config::ConfigService>,
         storage: Arc<storage::StorageService>,
-        upstream: Arc<upstream::UpstreamService>,
+        upstream: Arc<proxy::ProxyService>,
     ) -> Self {
         Self {
             config,
@@ -195,7 +195,7 @@ impl ZigController {
 
         let entry = controller
             .upstream
-            .fetch(upstream::DownloadRequest { url })
+            .fetch(proxy::DownloadRequest { url })
             .await?;
 
         match controller.storage.put("zig", &filename, &entry.bytes).await {

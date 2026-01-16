@@ -18,11 +18,11 @@ pub struct File {
     pub bytes: Bytes,
 }
 
-pub struct UpstreamService {
+pub struct ProxyService {
     client: Client<HttpsConnector<HttpConnector>, Empty<Bytes>>,
 }
 
-impl UpstreamService {
+impl ProxyService {
     pub fn new() -> Self {
         let https = HttpsConnector::new();
         let client = Client::builder(TokioExecutor::new()).build(https);
