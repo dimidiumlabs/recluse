@@ -212,6 +212,7 @@ impl ZigController {
         response::Response::builder()
             .status(status)
             .header(http::header::CONTENT_TYPE, "application/octet-stream")
+            .header(http::header::CONTENT_LENGTH, bytes.len())
             .body(body::Body::from(bytes))
             .unwrap()
     }

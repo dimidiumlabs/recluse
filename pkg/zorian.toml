@@ -9,7 +9,7 @@ appname="zorian"
 # Empty hostnames means accept all requests (catch-all).
 [[listen]]
 addr = "0.0.0.0:3000"
-hostnames = ["localhost", "127.0.0.1"]
+hostnames = ["localhost", "127.0.0.1", "::1"]
 
 # For HTTPS, set tls_cert and tls_key to PEM file paths.
 # tls_crt = "/etc/zorian/cert.pem"

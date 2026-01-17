@@ -7,6 +7,24 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 use thiserror::Error;
 
+/// When receiving a SIGINT/SIGTERM signal, we will wait for the proposed timeout before terminating workers
+pub const SHUTDOWN_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(1);
+
+/// Request timeout - maximum time to process a request (protects against Slowloris)
+pub const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// Maximum request body size in bytes (64 MB)
+pub const MAX_BODY_SIZE: usize = 64 * 1024 * 1024;
+
+/// Maximum number of concurrent requests across all clients
+pub const MAX_CONCURRENT_REQUESTS: usize = 512;
+
+/// Rate limit: requests per second per client IP
+pub const RATE_LIMIT_PER_SECOND: u64 = 10;
+
+/// Rate limit: burst size (max requests allowed in a burst) per client IP
+pub const RATE_LIMIT_BURST_SIZE: u32 = 50;
+
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("failed to read config file: {0}")]
@@ -58,8 +76,12 @@ pub struct ListenerConfig {
 impl Default for ListenerConfig {
     fn default() -> Self {
         Self {
-            addr: "0.0.0.0:3000".to_string(),
-            hostnames: Vec::new(),
+            addr: "127.0.0.1:3000".to_string(),
+            hostnames: vec![
+                String::from("[::1]"),
+                String::from("127.0.0.1"),
+                String::from("localhost"),
+            ],
             tls_crt: None,
             tls_key: None,
         }

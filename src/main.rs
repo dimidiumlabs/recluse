@@ -19,11 +19,16 @@ use axum::{
     extract::{self, connect_info::Connected},
     http::{self, Request, Response},
 };
+use tokio::signal;
 use tokio_rustls::TlsAcceptor;
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, registry::LookupSpan, util::SubscriberInitExt};
 
 use crate::backends::zig::ZigController;
+use crate::config::{
+    MAX_BODY_SIZE, MAX_CONCURRENT_REQUESTS, RATE_LIMIT_BURST_SIZE, RATE_LIMIT_PER_SECOND,
+    REQUEST_TIMEOUT, SHUTDOWN_TIMEOUT,
+};
 use crate::web::WebController;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -65,6 +70,25 @@ struct RequestInfo {
     path: http::Uri,
     host: Option<String>,
     user_agent: Option<String>,
+}
+
+/// Key extractor for tower-governor that uses ClientInfo to get the client IP.
+#[derive(Clone)]
+struct ClientIpKeyExtractor;
+
+impl tower_governor::key_extractor::KeyExtractor for ClientIpKeyExtractor {
+    type Key = std::net::IpAddr;
+
+    fn name(&self) -> &'static str {
+        "ClientIpKeyExtractor"
+    }
+
+    fn extract<T>(&self, req: &Request<T>) -> Result<Self::Key, tower_governor::GovernorError> {
+        req.extensions()
+            .get::<extract::ConnectInfo<ClientInfo>>()
+            .map(|ci| ci.0.0.ip())
+            .ok_or(tower_governor::GovernorError::UnableToExtractKey)
+    }
 }
 
 #[tokio::main]
@@ -218,6 +242,13 @@ async fn main() {
         )
         .on_failure(tower_http::trace::DefaultOnFailure::new().level(tracing::Level::ERROR));
 
+    let governor_config = tower_governor::governor::GovernorConfigBuilder::default()
+        .per_second(RATE_LIMIT_PER_SECOND)
+        .burst_size(RATE_LIMIT_BURST_SIZE)
+        .key_extractor(ClientIpKeyExtractor)
+        .finish()
+        .unwrap();
+
     let app = axum::Router::new()
         .merge(web_controller.router())
         .merge(zig_controller.router())
@@ -229,9 +260,23 @@ async fn main() {
         .layer(tower_http::request_id::SetRequestIdLayer::new(
             REQUEST_ID_HEADER.clone(),
             tower_http::request_id::MakeRequestUuid,
+        ))
+        .layer(tower_http::timeout::TimeoutLayer::with_status_code(
+            http::StatusCode::REQUEST_TIMEOUT,
+            REQUEST_TIMEOUT,
+        ))
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(MAX_BODY_SIZE))
+        .layer(tower_governor::GovernorLayer::new(Arc::new(
+            governor_config,
+        )))
+        .layer(tower::limit::ConcurrencyLimitLayer::new(
+            MAX_CONCURRENT_REQUESTS,
         ));
 
     let mut tasks = tokio::task::JoinSet::new();
+
+    // The channel is used to broadcast SIGINT/SIGTERM to all listeners.
+    let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
 
     for listener_config in config.listeners() {
         let tcp_listener = tokio::net::TcpListener::bind(&listener_config.addr)
@@ -259,22 +304,87 @@ async fn main() {
             }))
             .into_make_service_with_connect_info::<ClientInfo>();
 
+        let mut shutdown_rx = shutdown_tx.subscribe();
+        let shutdown_signal = async move {
+            shutdown_rx.recv().await.ok();
+        };
+
         if let (Some(crt_path), Some(key_path)) =
             (&listener_config.tls_crt, &listener_config.tls_key)
         {
             let tls_listener = TlsListener::new(tcp_listener, crt_path, key_path);
             tasks.spawn(async move {
-                axum::serve(tls_listener, app).await.unwrap();
+                axum::serve(tls_listener, app)
+                    .with_graceful_shutdown(shutdown_signal)
+                    .await
+                    .unwrap();
             });
         } else {
             tasks.spawn(async move {
-                axum::serve(tcp_listener, app).await.unwrap();
+                axum::serve(tcp_listener, app)
+                    .with_graceful_shutdown(shutdown_signal)
+                    .await
+                    .unwrap();
             });
         }
     }
 
-    if let Some(result) = tasks.join_next().await {
-        result.unwrap();
+    // Graceful shutdown
+    let sigint = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+    let sigterm = {
+        #[cfg(unix)]
+        let terminate = async {
+            signal::unix::signal(signal::unix::SignalKind::terminate())
+                .expect("failed to install signal handler")
+                .recv()
+                .await;
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        terminate
+    };
+    tokio::select! {
+        _ = sigint => info!("received SIGINT, shutting down"),
+        _ = sigterm => info!("received SIGTERM, shutting down"),
+        result = tasks.join_next() => {
+            match result {
+                Some(Ok(())) => error!("listener exited unexpectedly, shutting down"),
+                Some(Err(e)) => error!("listener failed: {e}, shutting down"),
+                None => {
+                    error!("no listeners running");
+                    return;
+                }
+            }
+        }
+    }
+
+    drop(shutdown_tx); // broadcast
+
+    // Wait for all listeners to finish with timeout
+    let shutdown_result = tokio::time::timeout(SHUTDOWN_TIMEOUT, async {
+        while let Some(result) = tasks.join_next().await {
+            if let Err(e) = result {
+                error!("listener task failed: {e}");
+            }
+        }
+    })
+    .await;
+
+    if shutdown_result.is_err() {
+        error!(
+            "shutdown timeout after {:?}, aborting {} remaining tasks",
+            SHUTDOWN_TIMEOUT,
+            tasks.len()
+        );
+        tasks.abort_all();
+    } else {
+        info!("shutdown complete");
     }
 }
 
@@ -362,7 +472,6 @@ where
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let interface = req.extensions().get::<ListenerInfo>().cloned();
 
-        // Check if hostname validation is needed
         if let Some(iface) = interface
             && !iface.hosts.is_empty()
         {
@@ -370,10 +479,25 @@ where
                 .headers()
                 .get(http::header::HOST)
                 .and_then(|v| v.to_str().ok())
-                .map(|h| h.split(':').next().unwrap_or(h)); // Strip port if present
+                .and_then(|raw| {
+                    let without_port = if let Some((host, port)) = raw.rsplit_once(':')
+                        && port.parse::<u16>().is_ok()
+                        && (host.ends_with(']') || !host.contains('['))
+                    {
+                        host
+                    } else {
+                        raw
+                    };
+                    url::Host::parse(without_port).ok().map(|h| h.to_string())
+                });
 
             let is_valid = host
-                .map(|h| iface.hosts.iter().any(|allowed| allowed == h))
+                .map(|h| {
+                    iface
+                        .hosts
+                        .iter()
+                        .any(|allowed| allowed.eq_ignore_ascii_case(&h))
+                })
                 .unwrap_or(false);
 
             if !is_valid {
