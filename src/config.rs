@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use std::collections::HashMap;
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -113,7 +114,6 @@ pub struct ListenerConfig {
     pub addr: SocketAddr,
 
     /// Hostnames to accept for this listener. Empty means accept all.
-    #[serde(default)]
     pub hostnames: Vec<String>,
 
     /// Path to TLS certificate file (PEM format). If set, tls_key must also be set.
@@ -138,15 +138,118 @@ impl Default for ListenerConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "lowercase")]
+pub enum LogLevel {
+    Trace,
+    Debug,
+    Info,
+    Warning,
+    Error,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum StdoutFormat {
+    #[default]
+    Pretty,
+    Json,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct StdoutConfig {
+    /// Enables sending logs to the stdout
+    pub enabled: bool,
+
+    /// Controls which logs will be sent to stdout
+    pub log_level: LogLevel,
+
+    /// Controls the format of logs in stdout
+    pub log_format: StdoutFormat,
+}
+impl Default for StdoutConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            log_level: LogLevel::Info,
+            log_format: StdoutFormat::Pretty,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct OtelcolConfig {
+    /// Enables sending telemetry to the otlp collector
+    pub enabled: bool,
+
+    /// Send logs to OTLP at this level (None = disabled)
+    pub logs: bool,
+
+    /// Send traces to OTLP
+    pub traces: bool,
+
+    /// Send traces to OTLP
+    pub metrics: bool,
+
+    /// OTLP endpoint (grpc:// or http://)
+    pub endpoint: String,
+
+    /// Export timeout in seconds
+    #[serde(deserialize_with = "deserialize_duration_secs")]
+    pub timeout: Duration,
+
+    /// Controls which logs will be sent to otlp
+    pub log_level: LogLevel,
+
+    /// Path to CA certificate for TLS (required for grpcs://)
+    pub tls_ca: Option<PathBuf>,
+
+    /// Path to client certificate for mTLS
+    pub tls_crt: Option<PathBuf>,
+
+    /// Path to client key for mTLS
+    pub tls_key: Option<PathBuf>,
+
+    /// HTTP headers for authentication
+    pub headers: HashMap<String, String>,
+}
+
+impl Default for OtelcolConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            logs: true,
+            traces: true,
+            metrics: true,
+            timeout: Duration::from_secs(10),
+            endpoint: "http://localhost:4317".into(),
+            log_level: LogLevel::Info,
+            tls_ca: None,
+            tls_crt: None,
+            tls_key: None,
+            headers: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct TelemetryConfig {
+    pub stdout: StdoutConfig,
+    pub otelcol: Option<OtelcolConfig>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct ConfigService {
     appname: String,
     dirname: PathBuf,
-    server: ServerConfig,
     listen: Vec<ListenerConfig>,
+    server: ServerConfig,
+    telemetry: TelemetryConfig,
 }
-
 impl Default for ConfigService {
     fn default() -> Self {
         Self {
@@ -154,10 +257,10 @@ impl Default for ConfigService {
             dirname: PathBuf::from("./.zorian-state"),
             server: ServerConfig::default(),
             listen: vec![ListenerConfig::default()],
+            telemetry: TelemetryConfig::default(),
         }
     }
 }
-
 impl ConfigService {
     pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
         let content = fs::read_to_string(path)?;
@@ -227,6 +330,10 @@ impl ConfigService {
     pub fn listeners(&self) -> &[ListenerConfig] {
         &self.listen
     }
+
+    pub fn telemetry(&self) -> &TelemetryConfig {
+        &self.telemetry
+    }
 }
 
 #[cfg(test)]
@@ -242,6 +349,7 @@ impl ConfigService {
                 tls_crt: None,
                 tls_key: None,
             }],
+            telemetry: TelemetryConfig::default(),
         }
     }
 }

@@ -10,8 +10,14 @@ repository = "https://github.com/mrdimidium/Zorian"
 
 [dependencies]
 axum = { version = "0.8", features = ["http2", "macros", "multipart"] }
-axum-server = { version = "0.8", default-features = false, features = ["tls-rustls-no-provider"] }
-rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+axum-server = { version = "0.8", default-features = false, features = [
+  "tls-rustls-no-provider",
+] }
+rustls = { version = "0.23", default-features = false, features = [
+  "ring",
+  "std",
+  "tls12",
+] }
 axum-extra = { version = "0.12", features = [
   "async-read-body",
   "attachment",
@@ -68,8 +74,30 @@ uuid = { version = "1.19", features = ["v4", "v5"] }
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify = { version = "0.4" }
 
+# OpenTelemetry
+opentelemetry = "0.31"
+opentelemetry-appender-tracing = "0.31"
+opentelemetry-otlp = { version = "0.31", features = [
+  "grpc-tonic",
+  "http-proto",
+  "logs",
+  "metrics",
+  "trace",
+  "tls",
+  "tls-roots",
+] }
+tonic = "0.14"
+opentelemetry-semantic-conventions = "0.31"
+opentelemetry_sdk = { version = "0.31", features = [
+  "rt-tokio",
+  "logs",
+  "metrics",
+  "trace",
+] }
+tracing-opentelemetry = "0.32"
+
 [dev-dependencies]
 cargo-deny = "0.19"
-cargo-llvm-cov = "0.6"
+cargo-llvm-cov = "0.8.2"
 tempfile = "3.24"
 url = "2.5"

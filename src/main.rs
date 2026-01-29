@@ -5,6 +5,7 @@ mod backends;
 mod config;
 mod proxy;
 mod storage;
+mod telemetry;
 mod web;
 
 use std::future::Future;
@@ -25,7 +26,7 @@ use axum_server::tls_rustls::RustlsConfig;
 use sd_notify::NotifyState;
 use tokio::signal;
 use tracing::{error, info, trace};
-use tracing_subscriber::{layer::SubscriberExt, registry::LookupSpan, util::SubscriberInitExt};
+use tracing_subscriber::registry::LookupSpan;
 
 use crate::backends::zig::ZigController;
 use crate::web::WebController;
@@ -92,21 +93,6 @@ async fn main() {
         }
     }
 
-    tracing_subscriber::registry()
-        .with({
-            #[cfg(debug_assertions)]
-            let fmt = tracing_subscriber::fmt::layer().pretty();
-            #[cfg(not(debug_assertions))]
-            let fmt = tracing_subscriber::fmt::layer().json();
-            fmt
-        })
-        .with(match std::env::var_os("ZORIAN_LOG") {
-            None => tracing_subscriber::EnvFilter::new("info,tower_http=info"),
-            Some(val) => tracing_subscriber::EnvFilter::try_new(val.to_string_lossy())
-                .expect("Invalid ZORIAN_LOG"),
-        })
-        .init();
-
     let config = Arc::new(match config_path {
         Some(path) => {
             info!("use config file from {}", path.to_str().unwrap());
@@ -122,9 +108,12 @@ async fn main() {
         }
     });
     config.validate().unwrap_or_else(|e| {
-        error!("invalid config: {e}");
+        eprintln!("invalid config: {e}");
         std::process::exit(1);
     });
+
+    let mut telemetry =
+        telemetry::TelemetryService::init(config.telemetry(), config.appname(), VERSION);
 
     let storage = Arc::new(storage::StorageService::new(config.clone()).await.unwrap());
     let upstream = Arc::new(proxy::ProxyService::new());
@@ -408,6 +397,8 @@ async fn main() {
     } else {
         info!("shutdown complete");
     }
+
+    telemetry.shutdown();
 }
 
 /// Layer that validates the Host header against configured hostnames.
