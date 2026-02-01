@@ -7,40 +7,40 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use axum::body::Body;
-use axum::extract;
 use axum::http::{HeaderValue, Method, Request, Response, StatusCode, header};
-use axum::response;
+use axum::{extract, routing};
 use chrono::{DateTime, Utc};
+use maud::html;
+use rust_embed::Embed;
 use sqlx::types::chrono;
 use tower::{Layer, Service};
 use tracing::error;
 
+#[derive(Embed)]
+#[folder = "src/assets/"]
+struct Assets;
+
 const CSP: &str = "default-src 'self'; base-uri 'none'; img-src 'self'; font-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'";
 
 /// Handles html pages rendering and static files
-pub struct WebController {
-    jinja: minijinja::Environment<'static>,
-}
-
-impl Default for WebController {
-    fn default() -> Self {
-        let mut jinja = minijinja::Environment::new();
-        jinja.add_template("index", HTML).unwrap();
-
-        Self { jinja }
-    }
-}
+#[derive(Default)]
+pub struct WebController {}
 
 impl WebController {
     pub fn router(self: Arc<Self>) -> axum::Router {
-        axum::Router::new()
-            .route("/index.css", axum::routing::get(Self::styles))
+        let pages = axum::Router::new()
             .route("/", axum::routing::get(Self::index))
-            .layer(LastModifiedLayer {})
             .layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
                 header::CACHE_CONTROL,
                 HeaderValue::from_static("no-cache"),
-            ))
+            ));
+
+        let assets = axum::Router::new().route("/assets/{*path}", routing::get(Self::assets));
+
+        axum::Router::new()
+            .merge(pages)
+            .merge(assets)
+            .layer(LastModifiedLayer {})
             .layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
                 header::CONTENT_SECURITY_POLICY,
                 HeaderValue::from_static(CSP),
@@ -48,21 +48,119 @@ impl WebController {
             .with_state(self)
     }
 
-    async fn index(
-        extract::State(controller): extract::State<Arc<Self>>,
-    ) -> Result<axum::response::Html<String>, StatusCode> {
-        let tmpl = controller.jinja.get_template("index");
+    async fn assets(extract::Path(path): extract::Path<String>) -> Response<Body> {
+        match Assets::get(&path) {
+            Some(file) => {
+                let mime = mime_guess::from_path(&path).first_or_octet_stream();
+                let is_font = matches!(
+                    path.rsplit('.').next(),
+                    Some("ttf" | "otf" | "woff" | "woff2" | "eot")
+                );
 
-        tmpl.and_then(|template| template.render(minijinja::context! {}))
-            .map(response::Html)
-            .map_err(|err| {
-                error!("html rendering failed: {err}");
-                StatusCode::INTERNAL_SERVER_ERROR
-            })
+                let mut builder = Response::builder()
+                    .status(StatusCode::OK)
+                    .header(header::CONTENT_TYPE, mime.as_ref());
+
+                if is_font {
+                    builder = builder
+                        .header(header::CACHE_CONTROL, "public, max-age=31536000, immutable");
+                }
+
+                builder.body(Body::from(file.data.into_owned())).unwrap()
+            }
+            None => Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::empty())
+                .unwrap(),
+        }
     }
 
-    async fn styles() -> axum_extra::response::Css<&'static str> {
-        axum_extra::response::Css(CSS)
+    async fn index() -> maud::Markup {
+        html! {
+            (maud::DOCTYPE)
+
+            html lang="en" {
+                meta charset="UTF-8";
+                meta name="viewport" content="width=device-width,initial-scale=1";
+                meta http-equiv="X-UA-Compatible" content="ie=edge";
+
+                link rel="stylesheet" href="assets/base.css";
+                title { "Earth PKG — tiny & opinionated packages mirror" }
+            }
+
+            body {
+                h1 { "Zorian — tiny & opinionated packages mirror." }
+
+                main {
+                    p {
+                     r#"This site provides a caching proxy for downloading Zig and Go installation files.
+                        It reduces load on upstream servers and makes your infrastructure more reliable by adding redundancy."#
+                    }
+
+                    p {
+                        "Zorian is open source software licensed under " a href="https://www.gnu.org/licenses/agpl-3.0.html" { "AGPL-3.0" } ". "
+                        "Source code is available on " a href="https://github.com/mrdimidium/zorian" { "GitHub" }
+                    }
+
+                    h2 { "Usage" }
+
+                    p {
+                        "Replace official download URLs with " code { "https://pkg.earth/{tool}/{filename}" } ". "
+                        "Files are cached automatically after the first download."
+                    }
+
+                    h3 id="zig" {
+                        a href="#zig" { "Zig" }
+                    }
+
+                    p {
+                        "Read more about community mirrors in the " a href="https://ziglang.org/download/community-mirrors/" { "blog post" } ". "
+                        "Information on how to deploy your own mirror is available " a href="https://github.com/ziglang/www.ziglang.org/blob/main/MIRRORS.md" { "in the documentation" } "."
+                    }
+
+                    p {
+                        "For simplicity, you can use tools like " a href="https://github.com/prantlf/zigup" { "prantlf/zigup" }
+                        " and " a href="https://github.com/mlugg/setup-zig" { "mlugg/setup-zig" } "."
+                    }
+
+                    p {
+                        "To install manually:"
+                        ol {
+                            li { "download zig dist file:" br; code { "wget https://pkg.earth/zig/zig-x86_64-linux-0.15.1.tar.xz" } ";" }
+                            li { "download zig minisig file:" br; code { "wget https://pkg.earth/zig/zig-x86_64-linux-0.15.1.tar.xz.minisig" } ";" }
+                            li { "check archive integrity:" br; code { "minisign -Vm zig-x86_64-linux-0.15.1.tar.xz -P RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U" } ";" }
+                            li { "unpack archive:" br; code { "tar -xf 'zig-x86_64-linux-0.15.1.tar.xz'" } ";" }
+                            li { "check installed zig:" br; code { "./zig-x86_64-linux-0.15.1/zig --version" } ";" }
+                        }
+                        "You can take actual minisig public key at " a href="https://ziglang.org/download/" { "ziglang.org/download" } "."
+                    }
+
+                    h3 id="go" { a href="#go" { "Go" } }
+
+                    p {
+                        "To install manually:"
+                        ol {
+                        li { "download go dist file:" br; code { "wget https://pkg.earth/go/go1.23.0.linux-amd64.tar.gz" } ";" }
+                        li { "download go sha256 file:" br; code { "wget https://pkg.earth/go/go1.23.0.linux-amd64.tar.gz.sha256" } ";" }
+                        li { "check archive integrity:" br; code { "sha256sum -c go1.23.0.linux-amd64.tar.gz.sha256" } ";" }
+                        li { "unpack archive:" br; code { "tar -xzf go1.23.0.linux-amd64.tar.gz" } ";" }
+                        li { "check installed go:" br; code { "./go/bin/go version" } ";" }
+                        }
+                        "You can find available versions at " a href="https://go.dev/dl/" { "go.dev/dl" } "."
+                    }
+
+                    h2 { "Privacy policy" }
+
+                    p { "This mirror is a non-profit project available on a voluntary basis. The author has no plans to fund it." }
+
+                    p { r#"Since the mirror is hosted on hardware, we collect access logs to combat bots and brute-force attacks.
+                        The logs are used for security purposes and load planning, are not shared with third parties,
+                        and are deleted after 30 days."# }
+
+                    p { "Third-party analytics systems are not used, same as client-side trackers." }
+                }
+            }
+        }
     }
 }
 
@@ -147,132 +245,3 @@ fn parse_http_date(value: &str) -> Option<DateTime<Utc>> {
         .map(|d| d.with_timezone(&Utc))
         .ok()
 }
-
-const HTML: &str = r##"
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-
-    <title>Earth PKG — tiny & opinionated packages mirror</title>
-    <link rel="stylesheet" href="index.css">
-  </head>
-
-  <body>
-    <h1>Zorian — tiny & opinionated packages mirror.</h1>
-
-    <main>
-      <p>This site provides a caching proxy for downloading Zig and Go installation files.
-         It reduces load on upstream servers and makes your infrastructure more reliable by adding redundancy.</p>
-
-      <p>Zorian is open source software licensed under <a href="https://www.gnu.org/licenses/agpl-3.0.html">AGPL-3.0</a>.
-         Source code is available on <a href="https://github.com/mrdimidium/zorian">GitHub</a>.</p>
-
-      <h2>Usage</h2>
-
-      <p>Replace official download URLs with <code>https://pkg.earth/{tool}/{filename}</code>.
-         Files are cached automatically after the first download.</p>
-
-      <h3 id="zig"><a href="#zig">Zig</a></h3>
-
-      <p>Read more about community mirrors in the <a href="https://ziglang.org/download/community-mirrors/">blog post</a>.
-         Information on how to deploy your own mirror is available
-         <a href="https://github.com/ziglang/www.ziglang.org/blob/main/MIRRORS.md">in the documentation</a>.</p>
-
-      <p>For simplicity, you can use tools like <a href="https://github.com/prantlf/zigup">prantlf/zigup</a> and
-         <a href="https://github.com/mlugg/setup-zig">mlugg/setup-zig</a>.</p>
-
-      <p>
-        To install manually:
-        <ol>
-          <li>download zig dist file:<br><code>wget https://pkg.earth/zig/zig-x86_64-linux-0.15.1.tar.xz</code>;</li>
-          <li>download zig minisig file:<br><code>wget https://pkg.earth/zig/zig-x86_64-linux-0.15.1.tar.xz.minisig</code>;</li>
-          <li>check archive integrity:<br><code>minisign -Vm zig-x86_64-linux-0.15.1.tar.xz -P RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U</code>;</li>
-          <li>unpack archive:<br><code>tar -xf "zig-x86_64-linux-0.15.1.tar.xz"</code>;</li>
-          <li>check installed zig:<br><code>./zig-x86_64-linux-0.15.1/zig --version</code>.</li>
-        </ol>
-        You can take actual minisig public key at <a href="https://ziglang.org/download/">ziglang.org/download</a>.
-      </p>
-
-      <h3 id="go"><a href="#go">Go</a></h3>
-
-      <p>
-        To install manually:
-        <ol>
-          <li>download go dist file:<br><code>wget https://pkg.earth/go/go1.23.0.linux-amd64.tar.gz</code>;</li>
-          <li>download go sha256 file:<br><code>wget https://pkg.earth/go/go1.23.0.linux-amd64.tar.gz.sha256</code>;</li>
-          <li>check archive integrity:<br><code>sha256sum -c go1.23.0.linux-amd64.tar.gz.sha256</code>;</li>
-          <li>unpack archive:<br><code>tar -xzf go1.23.0.linux-amd64.tar.gz</code>;</li>
-          <li>check installed go:<br><code>./go/bin/go version</code>.</li>
-        </ol>
-        You can find available versions at <a href="https://go.dev/dl/">go.dev/dl</a>.
-      </p>
-
-      <h2>Privacy policy</h2>
-
-      <p>This mirror is a non-profit project available on a voluntary basis. The author has no plans to fund it.</p>
-
-      <p>Since the mirror is hosted on hardware, we collect access logs to combat bots and brute-force attacks.
-         The logs are used for security purposes and load planning, are not shared with third parties,
-         and are deleted after 30 days.</p>
-
-      <p>Third-party analytics systems are not used, same as client-side trackers.</p>
-    </main>
-  </body>
-</html>
-"##;
-
-const CSS: &str = r##"
-:root {
-    font-size: 1.125rem;
-    line-height: 1.4;
-    font-family:
-    'Alegreya Sans', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
-    'Open Sans', 'Helvetica Neue', sans-serif;
-}
-
-html {
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    margin: 0 auto;
-    padding: 1.5em 2em;
-    max-width: 680px;
-}
-
-code {
-    font-size: .75rem;
-}
-
-h1, h2, h3, h4, h5, h6 {
-    font-weight: 700;
-    line-height: 1.2;
-    margin: 0;
-}
-
-h1 {
-    font-size: 2.75rem;
-}
-
-h1:first-child {
-    margin-top: 0;
-}
-
-th {
-    text-align: start;
-}
-
-h3 a {
-    color: inherit;
-    text-decoration: none;
-}
-
-h3 a:hover {
-    text-decoration: underline;
-}
-"##;

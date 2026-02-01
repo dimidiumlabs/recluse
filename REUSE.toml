@@ -9,3 +9,11 @@ path = [
 ]
 SPDX-FileCopyrightText = "2026 Nikolay Govorov <me@govorov.online>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
+path = [
+  "src/assets/jetbrainsmono/OFL.txt",
+  "src/assets/jetbrainsmono/*.woff2",
+]
+SPDX-FileCopyrightText = "Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)"
+SPDX-License-Identifier = "OFL-1.1"

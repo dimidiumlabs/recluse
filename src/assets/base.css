@@ -1,0 +1,77 @@
+/* SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online> */
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url(./jetbrainsmono/JetBrainsMono[wght].woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: italic;
+  font-weight: 100 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url(./jetbrainsmono/JetBrainsMono-Italic[wght].woff2) format('woff2');
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+:root {
+  line-height: 1.4;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+html {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0 auto;
+  max-width: 680px;
+  padding: 1.5em 2em;
+}
+
+pre, code {
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
+  margin: 0;
+}
+
+h1 {
+  font-size: 2.75rem;
+}
+
+h1:first-child {
+  margin-top: 0;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+th {
+  text-align: start;
+}
+
+h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h3 a:hover {
+  text-decoration: underline;
+}
