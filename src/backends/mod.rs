@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use bytes::Bytes;
+use mime_guess::mime;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
 use thiserror::Error;
@@ -59,11 +60,11 @@ pub enum ResolveError {
 /// Result of resolving a file request.
 pub enum ResolvedFile {
     /// Proxy request to upstream URL
-    Upstream(Url),
+    Upstream { mime: mime::Mime, url: Url },
     /// Return content directly
     Content {
+        mime: mime::Mime,
         data: bytes::Bytes,
-        mime: &'static str,
     },
 }
 

@@ -4,6 +4,7 @@
 use std::sync::Arc;
 
 use axum::{Router, body, extract, http, response, routing};
+use mime_guess::mime;
 use tracing::error;
 
 use crate::backends::{Backend, ResolveError, ResolvedFile};
@@ -40,11 +41,11 @@ impl<B: Backend> BackendController<B> {
         extract::State(controller): extract::State<Arc<Self>>,
         extract::Path(filename): extract::Path<String>,
     ) -> Result<response::Response, http::StatusCode> {
-        let url = match controller.backend.resolve_file(&filename).await {
+        let (url, mime) = match controller.backend.resolve_file(&filename).await {
             Ok(ResolvedFile::Content { data, mime }) => {
-                return Ok(Self::build_response_with_mime(data, mime));
+                return Ok(Self::build_response(http::StatusCode::OK, data, mime));
             }
-            Ok(ResolvedFile::Upstream(url)) => url,
+            Ok(ResolvedFile::Upstream { url, mime }) => (url, mime),
             Err(ResolveError::NotFound) => {
                 error!(backend = B::ID, filename, "file not found");
                 return Err(http::StatusCode::NOT_FOUND);
@@ -60,6 +61,7 @@ impl<B: Backend> BackendController<B> {
                 return Ok(Self::build_response(
                     http::StatusCode::OK,
                     entry.file_bytes.0,
+                    mime,
                 ));
             }
             Ok(None) => {}
@@ -88,22 +90,21 @@ impl<B: Backend> BackendController<B> {
             }
         }
 
-        Ok(Self::build_response(http::StatusCode::OK, entry.bytes))
+        Ok(Self::build_response(
+            http::StatusCode::OK,
+            entry.bytes,
+            mime,
+        ))
     }
 
-    fn build_response(status: http::StatusCode, bytes: bytes::Bytes) -> response::Response {
+    fn build_response(
+        status: http::StatusCode,
+        bytes: bytes::Bytes,
+        mime: mime::Mime,
+    ) -> response::Response {
         response::Response::builder()
             .status(status)
-            .header(http::header::CONTENT_TYPE, "application/octet-stream")
-            .header(http::header::CONTENT_LENGTH, bytes.len())
-            .body(body::Body::from(bytes))
-            .unwrap()
-    }
-
-    fn build_response_with_mime(bytes: bytes::Bytes, mime: &'static str) -> response::Response {
-        response::Response::builder()
-            .status(http::StatusCode::OK)
-            .header(http::header::CONTENT_TYPE, mime)
+            .header(http::header::CONTENT_TYPE, mime.as_ref())
             .header(http::header::CONTENT_LENGTH, bytes.len())
             .body(body::Body::from(bytes))
             .unwrap()

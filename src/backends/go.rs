@@ -4,6 +4,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use mime_guess::mime;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
@@ -458,7 +459,7 @@ impl Backend for GoBackend {
                 Ok(Some(hash)) => {
                     return Ok(ResolvedFile::Content {
                         data: hash.into(),
-                        mime: "text/plain",
+                        mime: mime::TEXT_PLAIN,
                     });
                 }
                 Ok(None) => return Err(ResolveError::NotFound),
@@ -489,7 +490,10 @@ impl Backend for GoBackend {
         let url = file
             .upstream_url(&self.config.upstream, &self.source)
             .map_err(|_| ResolveError::Internal)?;
-        Ok(ResolvedFile::Upstream(url))
+        Ok(ResolvedFile::Upstream {
+            url,
+            mime: mime::APPLICATION_OCTET_STREAM,
+        })
     }
 
     async fn migrate(&self) -> Result<(), IndexError> {

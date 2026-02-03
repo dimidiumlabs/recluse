@@ -39,9 +39,11 @@ body {
   padding: 1.5em 2em;
 }
 
-pre, code {
-  font-size: .75rem;
-  font-weight: 600;
+code {
+  margin: 0;
+  padding: .2em .4em;
+  white-space: break-spaces;
+  background-color: #818b981f;
 }
 
 h1, h2, h3, h4, h5, h6 {

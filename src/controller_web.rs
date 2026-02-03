@@ -181,15 +181,15 @@ impl WebController {
                                             }
                                             td {
                                                 @if let Some(ref src) = v.src {
-                                                    a href=(format!("/zig/{}", src.filename)) { code { "src" } }
+                                                    a href=(format!("/zig/{}", src.filename)) { "src" }
                                                     " "
                                                 }
                                                 @if let Some(ref bootstrap) = v.bootstrap {
-                                                    a href=(format!("/zig/{}", bootstrap.filename)) { code { "bootstrap" } }
+                                                    a href=(format!("/zig/{}", bootstrap.filename)) { "bootstrap" }
                                                     " "
                                                 }
                                                 @for (target, tarball) in v.targets.iter() {
-                                                    a href=(format!("/zig/{}", tarball.filename)) { code { (target) } }
+                                                    a href=(format!("/zig/{}", tarball.filename)) { (target) }
                                                     " "
                                                 }
                                             }
@@ -199,7 +199,6 @@ impl WebController {
                             }
                         }
                     }
-
 
                     p {
                         "Read more about community mirrors in the " a href="https://ziglang.org/download/community-mirrors/" { "blog post" } ". "
@@ -244,7 +243,7 @@ impl WebController {
                                             td { @if v.stable { "✓" } @else { "" } }
                                             td {
                                                 @for file in &v.files {
-                                                    a href=(format!("/go/{}", file.filename)) { code { (file.filename) } }
+                                                    a href=(format!("/go/{}", file.filename)) { (file.filename) }
                                                     " "
                                                 }
                                             }
