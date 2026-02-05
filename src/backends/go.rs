@@ -10,14 +10,14 @@ use thiserror::Error;
 use url::Url;
 
 use super::{Archive, Backend, BackendDelegate, FileKind, IndexError, ResolveError, ResolvedFile};
-use crate::utils::deserialize_duration_secs;
+use crate::utils::deserialize_duration;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct GoConfig {
     pub enabled: bool,
     pub upstream: Url,
-    #[serde(deserialize_with = "deserialize_duration_secs")]
+    #[serde(deserialize_with = "deserialize_duration")]
     pub refresh_interval: Duration,
 }
 impl Default for GoConfig {

@@ -169,24 +169,12 @@ async fn main() {
         }
     }
 
-    let config = Arc::new(match config_path {
-        Some(path) => {
-            info!("use config file from {}", path.to_str().unwrap());
-
-            config::ConfigService::from_file(&path).unwrap_or_else(|e| {
-                error!("{e}");
-                std::process::exit(1);
-            })
-        }
-        None => {
-            info!("configuration file path not provided");
-            config::ConfigService::default()
-        }
-    });
-    config.validate().unwrap_or_else(|e| {
-        eprintln!("invalid config: {e}");
-        std::process::exit(1);
-    });
+    let config = Arc::new(
+        config::ConfigService::load(config_path).unwrap_or_else(|e| {
+            eprintln!("invalid config: {e}");
+            std::process::exit(1);
+        }),
+    );
 
     let mut telemetry =
         telemetry::TelemetryService::init(config.telemetry(), config.appname(), VERSION);

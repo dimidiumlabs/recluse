@@ -23,3 +23,9 @@ clippy:
 test:
 	cargo build --release
 	cargo test --all-features --release --locked
+
+.PHONY: coverage
+coverage:
+	mkdir -p target/coverage/
+	cargo llvm-cov --all-features --workspace --lcov --output-path target/coverage/lcov.info
+	cargo llvm-cov --all-features --workspace --html --output-dir target/coverage/html

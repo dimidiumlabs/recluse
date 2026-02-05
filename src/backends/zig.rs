@@ -15,14 +15,14 @@ use super::{
     Archive, Backend, BackendDelegate, FileKind, IndexError, ResolveError, ResolvedFile,
     VersionType, stable_version,
 };
-use crate::utils::{deserialize_duration_secs, deserialize_size};
+use crate::utils::{deserialize_duration, deserialize_size};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct ZigConfig {
     pub enabled: bool,
     pub upstream: Url,
-    #[serde(deserialize_with = "deserialize_duration_secs")]
+    #[serde(deserialize_with = "deserialize_duration")]
     pub refresh_interval: Duration,
 }
 impl Default for ZigConfig {

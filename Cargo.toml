@@ -81,5 +81,6 @@ sd-notify = { version = "0.4" }
 
 [dev-dependencies]
 cargo-deny = "0.19"
+cargo-llvm-cov = "0.8"
 proptest = "1.6"
 tempfile = "3.24"
