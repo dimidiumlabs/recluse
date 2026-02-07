@@ -5,21 +5,20 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use semver::Version as SemVersion;
+use serde::de::{self, Visitor};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 use bytes::Bytes;
 
 use super::*;
-use crate::utils::{deserialize_duration, deserialize_size};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct ZigConfig {
     pub enabled: bool,
     pub upstream: Url,
-    #[serde(deserialize_with = "deserialize_duration")]
-    pub refresh_interval: Duration,
+    pub refresh_interval: u64,
 }
 
 impl Default for ZigConfig {
@@ -27,7 +26,7 @@ impl Default for ZigConfig {
         Self {
             enabled: true,
             upstream: Url::parse("https://ziglang.org").unwrap(),
-            refresh_interval: Duration::from_secs(60 * 10),
+            refresh_interval: 60 * 10,
         }
     }
 }
@@ -37,8 +36,33 @@ impl BackendConfig for ZigConfig {
         self.enabled
     }
     fn refresh_interval(&self) -> Duration {
-        self.refresh_interval
+        Duration::from_secs(self.refresh_interval)
     }
+}
+
+/// Deserializes a u64 from either a number or a string.
+fn deserialize_size<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct SizeVisitor;
+    impl<'de> Visitor<'de> for SizeVisitor {
+        type Value = u64;
+
+        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            f.write_str("a number or string")
+        }
+
+        fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
+            Ok(v)
+        }
+
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+            v.parse().map_err(de::Error::custom)
+        }
+    }
+
+    deserializer.deserialize_any(SizeVisitor)
 }
 
 /// Typed metadata for Zig files

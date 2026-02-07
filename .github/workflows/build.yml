@@ -76,7 +76,7 @@ jobs:
           printf '%s' "$GPG_PRIVATE_KEY" > $SIGNING_PRIVATE_KEY
           chmod 600 $SIGNING_PRIVATE_KEY
 
-          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "zorian") | .version')
           export VERSION="${PKG_VERSION}~dev.$(git log -1 --format=%ct)"
           export ARCH=${{ matrix.arch }}
 

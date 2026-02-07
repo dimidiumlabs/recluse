@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+[package]
+name = "repos"
+version = "0.0.0"
+description = "A collection of adapters to external repositories"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+bytes.workspace = true
+mime_guess.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+strum.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

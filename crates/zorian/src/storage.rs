@@ -38,8 +38,8 @@ use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, instrument, warn};
 use uuid::Uuid;
 
-use super::backends::{BackendError, BackendStorage, RawRelease, RawReleaseFile, Release};
-use super::config::ConfigService;
+use crate::config::ConfigService;
+use repos::{BackendError, BackendStorage, RawRelease, RawReleaseFile, Release};
 
 const SQLITE_POOL_SIZE: u32 = 16;
 const INLINE_THRESHOLD: usize = 256 * 1024; // 256 KB

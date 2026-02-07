@@ -7,9 +7,9 @@ use axum::{Router, body, extract, http, response, routing};
 use mime_guess::mime;
 use tracing::error;
 
-use crate::backends::{Backend, BackendError, BackendSpec, ResolvedFile};
 use crate::proxy;
 use crate::storage;
+use repos::{Backend, BackendError, BackendSpec, ResolvedFile};
 
 /// Generic controller for backend HTTP handling.
 pub struct BackendController<S: BackendSpec> {

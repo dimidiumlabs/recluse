@@ -11,7 +11,7 @@ use tower::ServiceExt;
 use tower_http::follow_redirect::FollowRedirect;
 use url::Url;
 
-use super::backends::{BackendError, BackendNetwork};
+use repos::{BackendError, BackendNetwork};
 
 #[derive(Clone)]
 pub struct DownloadRequest {

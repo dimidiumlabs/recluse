@@ -12,8 +12,8 @@ use serde::Deserialize;
 use thiserror::Error;
 use tracing::info;
 
-use crate::backends::{GoConfig, ZigConfig};
 use crate::utils::{deserialize_duration, deserialize_listener_addr};
+use repos::{GoConfig, ZigConfig};
 
 #[derive(Debug, Error)]
 pub enum ConfigError {

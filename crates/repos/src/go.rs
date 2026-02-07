@@ -7,15 +7,13 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use super::*;
-use crate::utils::deserialize_duration;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct GoConfig {
     pub enabled: bool,
     pub upstream: Url,
-    #[serde(deserialize_with = "deserialize_duration")]
-    pub refresh_interval: Duration,
+    pub refresh_interval: u64,
 }
 
 impl Default for GoConfig {
@@ -23,7 +21,7 @@ impl Default for GoConfig {
         Self {
             enabled: true,
             upstream: Url::parse("https://go.dev/dl/").unwrap(),
-            refresh_interval: Duration::from_secs(60 * 10),
+            refresh_interval: 60 * 10,
         }
     }
 }
@@ -33,7 +31,7 @@ impl BackendConfig for GoConfig {
         self.enabled
     }
     fn refresh_interval(&self) -> Duration {
-        self.refresh_interval
+        Duration::from_secs(self.refresh_interval)
     }
 }
 

@@ -4,7 +4,7 @@
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use serde::de::{self, Deserialize, Visitor};
+use serde::de::Deserialize;
 
 /// Deserializes a duration from seconds (u64).
 pub fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
@@ -36,67 +36,6 @@ mod deserialize_duration_tests {
     fn test_deserialize_duration_invalid_type() {
         let err = serde_json::from_str::<DurationWrapper>(r#"{"value": "5"}"#).unwrap_err();
         assert!(err.to_string().contains("invalid type"));
-    }
-}
-
-/// Deserializes a u64 from either a number or a string.
-pub fn deserialize_size<'de, D>(deserializer: D) -> Result<u64, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    struct SizeVisitor;
-    impl<'de> Visitor<'de> for SizeVisitor {
-        type Value = u64;
-
-        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            f.write_str("a number or string")
-        }
-
-        fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
-            Ok(v)
-        }
-
-        fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-            v.parse().map_err(de::Error::custom)
-        }
-    }
-
-    deserializer.deserialize_any(SizeVisitor)
-}
-
-#[cfg(test)]
-mod deserialize_size_tests {
-    use super::*;
-    use serde::Deserialize;
-
-    #[derive(Debug, Deserialize)]
-    struct SizeWrapper {
-        #[serde(deserialize_with = "deserialize_size")]
-        value: u64,
-    }
-
-    #[test]
-    fn test_deserialize_size_number() {
-        let value: SizeWrapper = serde_json::from_str(r#"{"value": 42}"#).unwrap();
-        assert_eq!(value.value, 42);
-    }
-
-    #[test]
-    fn test_deserialize_size_string() {
-        let value: SizeWrapper = serde_json::from_str(r#"{"value": "2048"}"#).unwrap();
-        assert_eq!(value.value, 2048);
-    }
-
-    #[test]
-    fn test_deserialize_size_invalid_string() {
-        let err = serde_json::from_str::<SizeWrapper>(r#"{"value": "nope"}"#).unwrap_err();
-        assert!(err.to_string().contains("invalid digit"));
-    }
-
-    #[test]
-    fn test_deserialize_size_invalid_type_uses_expectation() {
-        let err = serde_json::from_str::<SizeWrapper>(r#"{"value": {"k": 1}}"#).unwrap_err();
-        assert!(err.to_string().contains("a number or string"));
     }
 }
 

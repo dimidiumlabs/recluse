@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-mod backends;
 mod config;
 mod proxy;
 mod storage;
@@ -31,9 +30,9 @@ use tokio::signal;
 use tracing::{error, info, trace};
 use tracing_subscriber::registry::LookupSpan;
 
-use crate::backends::{Backend, BackendSpec, GoBackend, ZigBackend};
 use crate::controller_backend::BackendController;
 use crate::controller_web::WebController;
+use repos::{Backend, BackendSpec, GoBackend, ZigBackend};
 
 async fn init_backend<S: BackendSpec>(
     backend: Backend<S>,
