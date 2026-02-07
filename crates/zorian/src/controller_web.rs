@@ -3,7 +3,7 @@
 
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::task::{Context, Poll};
 
 use axum::body::Body;
@@ -12,6 +12,7 @@ use axum::{extract, routing};
 use chrono::{DateTime, Utc};
 use maud::{Markup, html};
 use rust_embed::Embed;
+use serde::Deserialize;
 use sqlx::types::chrono;
 use tower::{Layer, Service};
 use tracing::error;
@@ -23,6 +24,46 @@ use repos::{GoBackend, ZigBackend};
 struct Assets;
 
 const CSP: &str = "default-src 'self'; base-uri 'none'; img-src 'self'; font-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'";
+
+#[derive(Deserialize)]
+struct LicenseList {
+    overview: Vec<LicenseOverview>,
+    licenses: Vec<LicenseEntry>,
+}
+
+#[derive(Deserialize)]
+struct LicenseOverview {
+    id: String,
+    name: String,
+    count: usize,
+}
+
+#[derive(Deserialize)]
+struct LicenseEntry {
+    id: String,
+    name: String,
+    text: String,
+    first_of_kind: bool,
+    used_by: Vec<LicenseUsedBy>,
+}
+
+#[derive(Deserialize)]
+struct LicenseUsedBy {
+    #[serde(rename = "crate")]
+    crate_: LicenseCrate,
+}
+
+#[derive(Deserialize)]
+struct LicenseCrate {
+    name: String,
+    version: String,
+    repository: Option<String>,
+}
+
+static LICENSES: LazyLock<LicenseList> = LazyLock::new(|| {
+    let json = include_str!(concat!(env!("OUT_DIR"), "/licenses.json"));
+    serde_json::from_str(json).expect("failed to parse licenses.json")
+});
 
 /// Handles html pages rendering and static files
 pub struct WebController {
@@ -40,6 +81,7 @@ impl WebController {
     pub fn router(self: Arc<Self>) -> axum::Router {
         let pages = axum::Router::new()
             .route("/", axum::routing::get(Self::index))
+            .route("/licenses", axum::routing::get(Self::licenses))
             .layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
                 header::CACHE_CONTROL,
                 HeaderValue::from_static("no-cache"),
@@ -133,7 +175,8 @@ impl WebController {
 
                     p {
                         "Zorian is open source software licensed under " a href="https://www.gnu.org/licenses/agpl-3.0.html" { "AGPL-3.0" } ". "
-                        "Source code is available on " a href="https://github.com/mrdimidium/zorian" { "GitHub" }
+                        "Source code is available on " a href="https://github.com/mrdimidium/zorian" { "GitHub" } ". "
+                        "A list of dependency licenses " a href="/licenses" { "is available" } "."
                     }
 
                     h2 { "Usage" }
@@ -265,6 +308,65 @@ impl WebController {
                         and are deleted after 30 days."# }
 
                     p { "Third-party analytics systems are not used, same as client-side trackers." }
+                }
+            }
+        }
+    }
+
+    async fn licenses() -> Markup {
+        let data = &*LICENSES;
+
+        html! {
+            (maud::DOCTYPE)
+
+            html lang="en" {
+                head {
+                    meta charset="UTF-8";
+                    meta name="viewport" content="width=device-width,initial-scale=1";
+
+                    link rel="stylesheet" href="assets/base.css";
+                    title { "Third Party Licenses — Earth PKG" }
+                }
+
+                body {
+                    main {
+                        h1 { "Third Party Licenses" }
+                        p { "This page lists the licenses of the projects used in Zorian." }
+
+                        h2 { "Overview of licenses:" }
+                        ul {
+                            @for ov in &data.overview {
+                                li { a href=(format!("#{}", ov.id)) { (&ov.name) } " (" (ov.count) ")" }
+                            }
+                        }
+
+                        h2 { "All license text:" }
+
+                        @for (i, lic) in data.licenses.iter().enumerate() {
+                            div.license {
+                                @if lic.first_of_kind {
+                                    h3 id=(&lic.id) { (&lic.name) }
+                                }
+                                h4 id=(format!("{}-{}", lic.id, i)) { (&lic.name) }
+
+                                h5 { "Used by:" }
+                                ul .license-used-by {
+                                    @for usage in &lic.used_by {
+                                        li {
+                                            a href=(
+                                                usage.crate_.repository.as_deref()
+                                                    .unwrap_or(&format!("https://crates.io/crates/{}", usage.crate_.name))
+                                            ) {
+                                                (&usage.crate_.name) " " (&usage.crate_.version)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                pre .license-text { (&lic.text) }
+                            }
+                        }
+                    }
                 }
             }
         }

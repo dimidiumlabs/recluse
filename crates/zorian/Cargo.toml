@@ -18,13 +18,11 @@ repos.workspace = true
 
 async-trait.workspace = true
 axum.workspace = true
-axum-extra.workspace = true
 axum-server.workspace = true
 bytes.workspace = true
 bytesize.workspace = true
 chrono.workspace = true
 crc32fast.workspace = true
-futures.workspace = true
 hex.workspace = true
 http-body-util.workspace = true
 hyper.workspace = true
@@ -60,6 +58,10 @@ opentelemetry_sdk.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify.workspace = true
+
+[build-dependencies]
+xtask = { path = "../../xtask" }
+serde_json.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
