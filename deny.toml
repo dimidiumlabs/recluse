@@ -26,6 +26,7 @@ exceptions = [
   { crate = "base", allow = ["AGPL-3.0-or-later"] },
   { crate = "repos", allow = ["AGPL-3.0-or-later"] },
   { crate = "zorian", allow = ["AGPL-3.0-or-later"] },
+  { crate = "smoke", allow = ["AGPL-3.0-or-later"] },
 ]
 unused-allowed-license = "allow"
 

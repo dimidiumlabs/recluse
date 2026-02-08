@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 [workspace]
-members = ["crates/*", "xtask"]
+members = ["crates/*", "tests/smoke", "xtask"]
 resolver = "3"
 
 [workspace.package]

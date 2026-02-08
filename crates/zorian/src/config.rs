@@ -227,6 +227,7 @@ pub struct BackendsConfig {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(default)]
 pub struct ConfigService {
     appname: String,
     dirname: PathBuf,
@@ -236,6 +237,19 @@ pub struct ConfigService {
     backends: BackendsConfig,
 }
 
+impl Default for ConfigService {
+    fn default() -> Self {
+        Self {
+            appname: "zorian".to_string(),
+            dirname: PathBuf::from("./.zorian-state"),
+            listen: vec![ListenerConfig::default()],
+            server: ServerConfig::default(),
+            telemetry: TelemetryConfig::default(),
+            backends: BackendsConfig::default(),
+        }
+    }
+}
+
 impl ConfigService {
     pub fn load(config_path: Option<PathBuf>) -> Result<Self, ConfigError> {
         let config = match config_path {
@@ -243,19 +257,11 @@ impl ConfigService {
                 info!("use config file from {}", path.to_str().unwrap());
 
                 let content = fs::read_to_string(path)?;
-                let config: Self = toml::from_str(&content)?;
-                config
+                toml::from_str(&content)?
             }
             None => {
                 info!("configuration file path not provided");
-                Self {
-                    appname: "zorian".to_string(),
-                    dirname: PathBuf::from("./.zorian-state"),
-                    server: ServerConfig::default(),
-                    listen: vec![ListenerConfig::default()],
-                    telemetry: TelemetryConfig::default(),
-                    backends: BackendsConfig::default(),
-                }
+                Self::default()
             }
         };
 

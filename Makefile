@@ -33,6 +33,14 @@ test:
 	cargo build --release
 	cargo test --all-features --release --locked
 
+.PHONY: smoke
+smoke:
+	cargo run -p smoke
+
+.PHONY: smoke-local
+smoke-local:
+	./tests/smoke/run-local.sh
+
 .PHONY: coverage
 coverage:
 	mkdir -p target/coverage/
