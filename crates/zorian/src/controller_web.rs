@@ -320,23 +320,40 @@ impl WebController {
         WebController::layout(
             "Third Party Licenses",
             html! {
-                h1 { "Third Party Licenses" }
+                h1 { "Licenses" }
 
-                p { "This page lists the licenses of the projects used in Zorian." }
+                h2 { "Zorian" }
 
-                h2 { "Overview of licenses:" }
+                p {
+                    "Zorian is licensed under the " b { "GNU Affero General Public License v3.0 (AGPL-3.0)" } ". "
+                    "This means you are free to use, modify, and distribute the software. "
+                    "If you run a modified version of Zorian as a network service, "
+                    "you must make the source code of your modifications available to its users. "
+                    "The software is provided as-is, without warranty of any kind."
+                }
+
+                p {
+                    "Source code is available on "
+                    a href="https://github.com/mrdimidium/zorian" { "GitHub" }
+                    ". The full license text is included below."
+                }
+
+                pre .license-text { (include_str!("../../../LICENSE")) }
+
+                h2 { "Third party licenses" }
+
                 ul {
                     @for ov in &data.overview {
                         li { a href=(format!("#{}", ov.id)) { (&ov.name) } " (" (ov.count) ")" }
                     }
                 }
 
-                h2 { "All license text:" }
                 @for (i, lic) in data.licenses.iter().enumerate() {
-                    div.license {
-                        @if lic.first_of_kind {
-                            h3 id=(&lic.id) { (&lic.name) }
-                        }
+                    @if lic.first_of_kind {
+                        h3 id=(&lic.id) { (&lic.name) }
+                    }
+
+                    section.license {
                         h4 id=(format!("{}-{}", lic.id, i)) { (&lic.name) }
 
                         p { "Used by:" }
@@ -381,7 +398,7 @@ impl WebController {
                 }
 
                 body {
-                    (content)
+                    article { (content) }
                 }
             }
         }
