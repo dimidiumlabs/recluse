@@ -26,7 +26,7 @@ impl Default for ZigConfig {
         Self {
             enabled: true,
             upstream: Url::parse("https://ziglang.org").unwrap(),
-            refresh_interval: 60 * 10,
+            refresh_interval: 60 * 60,
         }
     }
 }
@@ -70,7 +70,7 @@ where
 pub struct ZigFileMeta {
     pub target: String,
 
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub minisig: Option<String>,
 }
 

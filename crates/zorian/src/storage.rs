@@ -721,13 +721,11 @@ impl StorageService {
                  checksum = excluded.checksum,
                  size = excluded.size,
                  os = excluded.os,
-                 arch = excluded.arch,
-                 meta = excluded.meta
+                 arch = excluded.arch
              WHERE checksum IS NOT excluded.checksum
                 OR size IS NOT excluded.size
                 OR os IS NOT excluded.os
                 OR arch IS NOT excluded.arch
-                OR meta IS NOT excluded.meta
              RETURNING 1",
         )
         .bind(backend)
@@ -824,12 +822,22 @@ impl StorageService {
             .collect()
     }
 
-    /// Update a single file entry.
-    pub async fn update_file(&self, file: &RawReleaseFile) -> Result<bool, StorageError> {
-        let mut tx = self.sqlite.begin().await?;
-        let changed = Self::insert_file(&mut tx, &file.backend, &file.version, file).await?;
-        tx.commit().await?;
-        Ok(changed)
+    /// Update file metadata (e.g. after fetching a signature).
+    pub async fn update_file_meta(&self, file: &RawReleaseFile) -> Result<bool, StorageError> {
+        let meta_json = file.meta.as_ref().map(|m| serde_json::to_vec(m).unwrap());
+
+        let result = query(
+            "UPDATE files SET meta = ?1
+             WHERE backend = ?2 AND version = ?3 AND filename = ?4",
+        )
+        .bind(meta_json.as_deref())
+        .bind(&file.backend)
+        .bind(&file.version)
+        .bind(&file.filename)
+        .execute(&self.sqlite)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
     }
 }
 
@@ -872,8 +880,8 @@ impl BackendStorage for StorageService {
             .map_err(|e| BackendError::Storage(e.to_string()))
     }
 
-    async fn update_file(&self, file: &RawReleaseFile) -> Result<bool, BackendError> {
-        StorageService::update_file(self, file)
+    async fn update_file_meta(&self, file: &RawReleaseFile) -> Result<bool, BackendError> {
+        StorageService::update_file_meta(self, file)
             .await
             .map_err(|e| BackendError::Storage(e.to_string()))
     }

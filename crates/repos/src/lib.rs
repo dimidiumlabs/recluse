@@ -313,8 +313,8 @@ pub trait BackendStorage: Send + Sync {
         meta_null_field: Option<&str>,
     ) -> Result<Vec<RawReleaseFile>, BackendError>;
 
-    /// Update a single file.
-    async fn update_file(&self, file: &RawReleaseFile) -> Result<bool, BackendError>;
+    /// Update file metadata (e.g. after fetching a signature).
+    async fn update_file_meta(&self, file: &RawReleaseFile) -> Result<bool, BackendError>;
 }
 
 /// Delegate provides I/O primitives to backends.
@@ -404,7 +404,7 @@ impl<S: BackendSpec> Backend<S> {
             for file in files {
                 match S::fetch_signature(&file, &self.config, &self.source, &*self.network).await {
                     Ok(updated) => {
-                        if let Err(e) = self.storage.update_file(&updated).await {
+                        if let Err(e) = self.storage.update_file_meta(&updated).await {
                             tracing::debug!(
                                 filename = file.filename,
                                 "failed to store signature: {e}"

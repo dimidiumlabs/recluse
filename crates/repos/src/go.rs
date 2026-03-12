@@ -21,7 +21,7 @@ impl Default for GoConfig {
         Self {
             enabled: true,
             upstream: Url::parse("https://go.dev/dl/").unwrap(),
-            refresh_interval: 60 * 10,
+            refresh_interval: 60 * 60,
         }
     }
 }
