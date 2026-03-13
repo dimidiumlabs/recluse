@@ -48,6 +48,7 @@ fn get_asset(path: &str) -> Option<(&'static [u8], ContentType)> {
             include_bytes!("assets/jetbrainsmono/JetBrainsMono-Italic[wght].woff2"),
             ContentType::FontWoff2,
         ),
+        "robots.txt" => (include_bytes!("assets/robots.txt"), ContentType::TextPlain),
         _ => return None,
     })
 }

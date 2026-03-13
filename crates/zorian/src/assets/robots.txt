@@ -1,0 +1,5 @@
+User-Agent: *
+Disallow: /zig/
+
+User-Agent: *
+Disallow: /go/
