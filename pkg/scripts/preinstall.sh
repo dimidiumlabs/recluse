@@ -4,14 +4,14 @@
 
 set -e
 
-PROGRAM=zorian
-ZORIAN_USER=${ZORIAN_USER:-zorian}
-ZORIAN_GROUP=${ZORIAN_GROUP:-${ZORIAN_USER}}
+PROGRAM=recluse
+RECLUSE_USER=${RECLUSE_USER:-recluse}
+RECLUSE_GROUP=${RECLUSE_GROUP:-${RECLUSE_USER}}
 
-if ! getent group $ZORIAN_GROUP >/dev/null; then
-  groupadd --system $ZORIAN_GROUP
+if ! getent group $RECLUSE_GROUP >/dev/null; then
+  groupadd --system $RECLUSE_GROUP
 fi
 
-if ! getent passwd $ZORIAN_USER >/dev/null; then
-  useradd --system --gid $ZORIAN_GROUP --no-create-home --shell /usr/sbin/nologin $ZORIAN_USER
+if ! getent passwd $RECLUSE_USER >/dev/null; then
+  useradd --system --gid $RECLUSE_GROUP --no-create-home --shell /usr/sbin/nologin $RECLUSE_USER
 fi

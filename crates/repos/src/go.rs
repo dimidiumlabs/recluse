@@ -487,10 +487,10 @@ mod tests_go_filename {
             upstream: Url::parse("https://dl.google.com/go/").unwrap(),
             ..Default::default()
         };
-        let url = t.upstream_url(&config, "zorian:test").unwrap();
+        let url = t.upstream_url(&config, "recluse:test").unwrap();
         assert_eq!(
             url.as_str(),
-            "https://dl.google.com/go/go1.25.6.linux-amd64.tar.gz?source=zorian%3Atest"
+            "https://dl.google.com/go/go1.25.6.linux-amd64.tar.gz?source=recluse%3Atest"
         );
     }
 

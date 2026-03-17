@@ -27,4 +27,4 @@ jobs:
           branch: "main"
           allowlist: mrdimidium
           path-to-signatures: "LICENSES/cla.json"
-          path-to-document: "https://github.com/mrdimidium/Zorian/blob/main/CLA.md"
+          path-to-document: "https://github.com/mrdimidium/recluse/blob/main/CLA.md"

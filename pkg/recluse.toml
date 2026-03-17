@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Zorian will dutifully indicate its user agent and protocols (for example, source for zig).
+# recluse will dutifully indicate its user agent and protocols (for example, source for zig).
 # Specify your name if you want your instance to be identified.
-appname="zorian"
+appname="recluse"
 
 # Path to the directory for storing state (indexes, caches, statistics).
 # Must be a writable directory.
-dirname="/var/lib/zorian"
+dirname="/var/lib/recluse"
 
 # Common server settings
 [server]
@@ -25,8 +25,8 @@ addr = "0.0.0.0:2025"
 hostnames = ["localhost", "127.0.0.1", "::1"]
 
 # For HTTPS, set tls_cert and tls_key to PEM file paths.
-# tls_crt = "/etc/zorian/cert.pem"
-# tls_key = "/etc/zorian/key.pem"
+# tls_crt = "/etc/recluse/cert.pem"
+# tls_key = "/etc/recluse/key.pem"
 
 # Telemetry configuration
 # Logs to stdout (pretty or json format)
@@ -47,13 +47,13 @@ log_format = "pretty"   # pretty, json
 # log_level = "info"
 #
 # # For gRPC with TLS, specify certificates:
-# # tls_ca = "/etc/zorian/otel-ca.crt"
-# # tls_crt = "/etc/zorian/otel-client.crt"  # for mTLS
-# # tls_key = "/etc/zorian/otel-client.key"  # for mTLS
+# # tls_ca = "/etc/recluse/otel-ca.crt"
+# # tls_crt = "/etc/recluse/otel-client.crt"  # for mTLS
+# # tls_key = "/etc/recluse/otel-client.key"  # for mTLS
 #
 # # HTTP headers for authentication:
 # # [telemetry.otelcol.headers]
 # # Authorization = "Bearer <token>"
 
-# Environment variable ZORIAN_LOG overrides log_level settings.
-# Example: ZORIAN_LOG=debug,sqlx=warn
+# Environment variable RECLUSE_LOG overrides log_level settings.
+# Example: RECLUSE_LOG=debug,sqlx=warn

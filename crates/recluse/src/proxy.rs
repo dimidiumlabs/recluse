@@ -40,7 +40,7 @@ impl ProxyService {
         let request = Request::builder()
             .method(http::Method::GET)
             .uri(request.url.as_str())
-            .header(http::header::USER_AGENT, "zorian/0.1")
+            .header(http::header::USER_AGENT, "recluse/0.1")
             .body(Empty::<Bytes>::new())
             .unwrap();
 

@@ -1,4 +1,4 @@
-# Zorian — tiny packages caching proxy
+# Recluse — tiny packages caching proxy
 
 Soon humanity will go to Mars and in order for the colonists to be able
 to program, we will need a local mirror of packages.
@@ -13,21 +13,21 @@ is **not** intended for production use.
 ```bash
 sudo apt install curl gnupg
 
-curl -fsSL https://github.com/mrdimidium/Zorian/releases/download/dev/public.gpg | sudo gpg --dearmor -o /usr/share/keyrings/zorian.gpg
-echo "deb [signed-by=/usr/share/keyrings/zorian.gpg] https://zorian.hel1.your-objectstorage.com/apt/ dev main" | sudo tee /etc/apt/sources.list.d/zorian.list
-sudo apt update && sudo apt install zorian
+curl -fsSL https://github.com/mrdimidium/recluse/releases/download/dev/public.gpg | sudo gpg --dearmor -o /usr/share/keyrings/recluse.gpg
+echo "deb [signed-by=/usr/share/keyrings/recluse.gpg] https://recluse.hel1.your-objectstorage.com/apt/ dev main" | sudo tee /etc/apt/sources.list.d/recluse.list
+sudo apt update && sudo apt install recluse
 
-sudo systemctl enable --now zorian
+sudo systemctl enable --now recluse
 ```
 
 **Fedora/RedHat:**
 
 ```bash
-sudo rpm --import https://github.com/mrdimidium/Zorian/releases/download/dev/public.gpg
-sudo dnf config-manager --add-repo https://zorian.hel1.your-objectstorage.com/rpm/
-sudo dnf install zorian
+sudo rpm --import https://github.com/mrdimidium/recluse/releases/download/dev/public.gpg
+sudo dnf config-manager --add-repo https://recluse.hel1.your-objectstorage.com/rpm/
+sudo dnf install recluse
 
-sudo systemctl enable --now zorian
+sudo systemctl enable --now recluse
 ```
 
 ## Build from source
@@ -35,19 +35,19 @@ sudo systemctl enable --now zorian
 1. Install build dependencies:
     - Fedora/RedHat: `sudo dnf install gcc openssl-devel pkg-config`
     - Debian/Ubuntu: `sudo apt install build-essential libssl-dev pkg-config`
-1. Clone repo: `git clone https://github.com/mrdimidium/Zorian.git && cd Zorian`
+1. Clone repo: `git clone https://github.com/mrdimidium/recluse.git && cd recluse`
 1. Build from source: `cargo build --release`
 1. Install manually
 
     ```bash
-    sudo groupadd --system zorian
-    sudo useradd --system --gid zorian --no-create-home --shell /usr/sbin/nologin zorian
-    sudo install -m 700 -o zorian ./pkg/zorian.toml     /etc/
-    sudo install -m 755 -o root   ./pkg/zorian.service  /usr/lib/systemd/system
-    sudo install -m 755 -o root   target/release/zorian /usr/local/bin/
+    sudo groupadd --system recluse
+    sudo useradd --system --gid recluse --no-create-home --shell /usr/sbin/nologin recluse
+    sudo install -m 700 -o recluse ./pkg/recluse.toml     /etc/
+    sudo install -m 755 -o root   ./pkg/recluse.service  /usr/lib/systemd/system
+    sudo install -m 755 -o root   target/release/recluse /usr/local/bin/
     ```
 
-1. start systemd service: `sudo systemctl enable --now zorian`
+1. start systemd service: `sudo systemctl enable --now recluse`
 
 ## License
 

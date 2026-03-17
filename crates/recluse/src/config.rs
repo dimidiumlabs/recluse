@@ -240,8 +240,8 @@ pub struct ConfigService {
 impl Default for ConfigService {
     fn default() -> Self {
         Self {
-            appname: "zorian".to_string(),
-            dirname: PathBuf::from("./.zorian-state"),
+            appname: "recluse".to_string(),
+            dirname: PathBuf::from("./.recluse-state"),
             listen: vec![ListenerConfig::default()],
             server: ServerConfig::default(),
             telemetry: TelemetryConfig::default(),
@@ -410,13 +410,13 @@ mod tests {
         #[test]
         fn test_load_none_defaults() {
             let temp = TempDir::new().unwrap();
-            let state = temp.path().join(".zorian-state");
+            let state = temp.path().join(".recluse-state");
             std::fs::create_dir_all(&state).unwrap();
             let cwd = std::env::current_dir().unwrap();
             std::env::set_current_dir(temp.path()).unwrap();
 
             let cfg = ConfigService::load(None).unwrap();
-            assert_eq!(cfg.appname(), "zorian");
+            assert_eq!(cfg.appname(), "recluse");
 
             std::env::set_current_dir(cwd).unwrap();
         }

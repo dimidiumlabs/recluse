@@ -76,7 +76,7 @@ jobs:
           printf '%s' "$GPG_PRIVATE_KEY" > $SIGNING_PRIVATE_KEY
           chmod 600 $SIGNING_PRIVATE_KEY
 
-          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "zorian") | .version')
+          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "recluse") | .version')
           export VERSION="${PKG_VERSION}~dev.$(git log -1 --format=%ct)"
           export ARCH=${{ matrix.arch }}
 
@@ -182,9 +182,9 @@ jobs:
       # Update APT/RPM repos on s3
       - name: Create APT repository
         run: |
-          aptly repo create -distribution=dev -component=main zorian
-          aptly repo add zorian dist/*.deb
-          aptly publish repo -architectures=amd64,arm64 -gpg-key="${{vars.GPG_KEY_ID}}" zorian
+          aptly repo create -distribution=dev -component=main recluse
+          aptly repo add recluse dist/*.deb
+          aptly publish repo -architectures=amd64,arm64 -gpg-key="${{vars.GPG_KEY_ID}}" recluse
       - name: Create RPM repository
         run: |
           mkdir -p rpm-repo

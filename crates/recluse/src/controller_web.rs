@@ -167,9 +167,9 @@ impl WebController {
         };
 
         WebController::layout(
-            "Zorian — tiny & opinionated packages mirror",
+            "Recluse — tiny & opinionated packages mirror",
             html! {
-                h1 { "Zorian — tiny & opinionated packages mirror." }
+                h1 { "Recluse — tiny & opinionated packages mirror." }
 
                 p {
                     r#"This site provides a caching proxy for downloading Zig and Go installation files.
@@ -177,8 +177,8 @@ impl WebController {
                 }
 
                 p {
-                    "Zorian is open source software licensed under " a href="https://www.gnu.org/licenses/agpl-3.0.html" { "AGPL-3.0" } ". "
-                    "Source code is available on " a href="https://github.com/mrdimidium/zorian" { "GitHub" } ". "
+                    "Recluse is open source software licensed under " a href="https://www.gnu.org/licenses/agpl-3.0.html" { "AGPL-3.0" } ". "
+                    "Source code is available on " a href="https://github.com/mrdimidium/recluse" { "GitHub" } ". "
                     "A list of dependency licenses " a href="/about/licenses" { "is available" } "."
                 }
 
@@ -323,19 +323,19 @@ impl WebController {
             html! {
                 h1 { "Licenses" }
 
-                h2 { "Zorian" }
+                h2 { "Recluse" }
 
                 p {
-                    "Zorian is licensed under the " b { "GNU Affero General Public License v3.0 (AGPL-3.0)" } ". "
+                    "Recluse is licensed under the " b { "GNU Affero General Public License v3.0 (AGPL-3.0)" } ". "
                     "This means you are free to use, modify, and distribute the software. "
-                    "If you run a modified version of Zorian as a network service, "
+                    "If you run a modified version of Recluse as a network service, "
                     "you must make the source code of your modifications available to its users. "
                     "The software is provided as-is, without warranty of any kind."
                 }
 
                 p {
                     "Source code is available on "
-                    a href="https://github.com/mrdimidium/zorian" { "GitHub" }
+                    a href="https://github.com/mrdimidium/recluse" { "GitHub" }
                     ". The full license text is included below."
                 }
 

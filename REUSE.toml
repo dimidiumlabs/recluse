@@ -9,19 +9,19 @@ path = [
 
   "pkg/*.svg",
 
-  "crates/zorian/src/assets/*.svg",
-  "crates/zorian/src/assets/*.ico",
-  "crates/zorian/src/assets/*.png",
-  "crates/zorian/src/assets/robots.txt",
-  "crates/zorian/src/assets/manifest.webmanifest",
+  "crates/recluse/src/assets/*.svg",
+  "crates/recluse/src/assets/*.ico",
+  "crates/recluse/src/assets/*.png",
+  "crates/recluse/src/assets/robots.txt",
+  "crates/recluse/src/assets/manifest.webmanifest",
 ]
 SPDX-FileCopyrightText = "2026 Nikolay Govorov <me@govorov.online>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 [[annotations]]
 path = [
-  "crates/zorian/src/assets/jetbrainsmono/OFL.txt",
-  "crates/zorian/src/assets/jetbrainsmono/*.woff2",
+  "crates/recluse/src/assets/jetbrainsmono/OFL.txt",
+  "crates/recluse/src/assets/jetbrainsmono/*.woff2",
 ]
 SPDX-FileCopyrightText = "Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)"
 SPDX-License-Identifier = "OFL-1.1"

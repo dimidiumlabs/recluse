@@ -102,9 +102,9 @@ impl Drop for TelemetryService {
 }
 impl TelemetryService {
     pub fn init(config: &TelemetryConfig, service_name: &str, service_version: &str) -> Self {
-        let env_filter = match std::env::var_os("ZORIAN_LOG") {
+        let env_filter = match std::env::var_os("RECLUSE_LOG") {
             Some(val) => tracing_subscriber::EnvFilter::try_new(val.to_string_lossy())
-                .expect("Invalid ZORIAN_LOG"),
+                .expect("Invalid RECLUSE_LOG"),
             None => tracing_subscriber::EnvFilter::new(Self::log_level_to_filter(
                 config.stdout.log_level,
             )),

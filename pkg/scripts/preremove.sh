@@ -4,7 +4,7 @@
 
 set -e
 
-if [ -x "/bin/systemctl" ] && [ -d /run/systemd/system ] && [ -f /usr/lib/systemd/system/zorian.service ]; then
-  /bin/systemctl stop zorian.service || true
-  /bin/systemctl disable zorian.service || true
+if [ -x "/bin/systemctl" ] && [ -d /run/systemd/system ] && [ -f /usr/lib/systemd/system/recluse.service ]; then
+  /bin/systemctl stop recluse.service || true
+  /bin/systemctl disable recluse.service || true
 fi

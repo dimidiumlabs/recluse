@@ -12,7 +12,7 @@ version = "0.1.0"
 license = "AGPL-3.0-or-later"
 authors = ["Nikolay Govorov <me@govorov.online>"]
 homepage = "https://pkg.earth"
-repository = "https://github.com/mrdimidium/Zorian"
+repository = "https://github.com/mrdimidium/recluse"
 
 [workspace.dependencies]
 # local dependencies

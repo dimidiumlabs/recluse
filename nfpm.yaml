@@ -4,7 +4,7 @@
 # yaml-language-server: $schema=https://nfpm.goreleaser.com/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 
-name: zorian
+name: recluse
 arch: ${ARCH}
 version: ${VERSION}
 license: AGPL-3.0-or-later
@@ -14,34 +14,34 @@ description: Tiny packages caching proxy
 
 contents:
   - src: ./LICENSE
-    dst: /usr/share/doc/zorian/LICENSE
+    dst: /usr/share/doc/recluse/LICENSE
   - src: ./README.md
-    dst: /usr/share/doc/zorian/README.md
+    dst: /usr/share/doc/recluse/README.md
 
-  - src: target/release/zorian
-    dst: /usr/local/bin/zorian
+  - src: target/release/recluse
+    dst: /usr/local/bin/recluse
     file_info:
       mode: 0755
 
-  - src: pkg/zorian.toml
-    dst: /etc/zorian.toml
+  - src: pkg/recluse.toml
+    dst: /etc/recluse.toml
     type: config|noreplace
     file_info:
       mode: 0640
       owner: root
-      group: zorian
+      group: recluse
 
-  - src: pkg/zorian.service
-    dst: /usr/lib/systemd/system/zorian.service
+  - src: pkg/recluse.service
+    dst: /usr/lib/systemd/system/recluse.service
     file_info:
       mode: 0644
 
-  - dst: /var/lib/zorian
+  - dst: /var/lib/recluse
     type: dir
     file_info:
       mode: 0755
       owner: root
-      group: zorian
+      group: recluse
 
 
 scripts:

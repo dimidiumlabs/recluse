@@ -2,27 +2,27 @@
 # SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Builds zorian, starts it in a temporary directory, runs smoke tests, cleans up.
+# Builds recluse, starts it in a temporary directory, runs smoke tests, cleans up.
 #
 # Usage:
 #   ./tests/smoke/run-local.sh          # default port 2025
-#   ZORIAN_PORT=9999 ./tests/smoke/run-local.sh
+#   RECLUSE_PORT=9999 ./tests/smoke/run-local.sh
 
 set -euo pipefail
 
-PORT="${ZORIAN_PORT:-2025}"
+PORT="${RECLUSE_PORT:-2025}"
 BASE_URL="http://127.0.0.1:${PORT}"
 
 TMPDIR="$(mktemp -d)"
-LOGFILE="$TMPDIR/zorian.log"
+LOGFILE="$TMPDIR/recluse.log"
 trap 'kill "$PID" 2>/dev/null; wait "$PID" 2>/dev/null; rm -rf "$TMPDIR"' EXIT
 
 # Build
-echo "Building zorian..."
-cargo build --release -p zorian
+echo "Building recluse..."
+cargo build --release -p recluse
 
 # Write minimal config
-cat > "$TMPDIR/zorian.toml" <<EOF
+cat > "$TMPDIR/recluse.toml" <<EOF
 appname = "smoke"
 dirname = "$TMPDIR/state"
 
@@ -46,10 +46,10 @@ EOF
 
 mkdir -p "$TMPDIR/state"
 
-# Start zorian
-echo "Starting zorian on ${BASE_URL}..."
+# Start recluse
+echo "Starting recluse on ${BASE_URL}..."
 echo "Server log: ${LOGFILE}"
-cargo run --release -p zorian -- --config="$TMPDIR/zorian.toml" >"$LOGFILE" 2>&1 &
+cargo run --release -p recluse -- --config="$TMPDIR/recluse.toml" >"$LOGFILE" 2>&1 &
 PID=$!
 
 # Wait for index to load (log shows "index refreshed" for each backend)
@@ -60,7 +60,7 @@ for i in $(seq 1 120); do
         break
     fi
     if ! kill -0 "$PID" 2>/dev/null; then
-        echo "zorian exited unexpectedly. Server log:"
+        echo "recluse exited unexpectedly. Server log:"
         cat "$LOGFILE"
         exit 1
     fi
@@ -74,4 +74,4 @@ if ! grep -q "index refreshed" "$LOGFILE" 2>/dev/null; then
 fi
 
 # Run smoke tests
-ZORIAN_URL="${BASE_URL}" cargo run -p smoke
+RECLUSE_URL="${BASE_URL}" cargo run -p smoke

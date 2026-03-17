@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match args.first().map(|s| s.as_str()) {
         Some("licenses") => {
-            let json = xtask::licenses::generate_json("crates/zorian/Cargo.toml")?;
+            let json = xtask::licenses::generate_json("crates/recluse/Cargo.toml")?;
             println!("{json}");
             Ok(())
         }
