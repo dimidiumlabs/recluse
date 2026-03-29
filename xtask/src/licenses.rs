@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
+// Copyright (c) 2026 Nikolay Govorov
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // The approach to gathering licenses — resolving the dependency graph via

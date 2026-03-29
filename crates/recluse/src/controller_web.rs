@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
+// Copyright (c) 2026 Nikolay Govorov
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::future::Future;
@@ -178,7 +178,7 @@ impl WebController {
 
                 p {
                     "Recluse is open source software licensed under " a href="https://www.gnu.org/licenses/agpl-3.0.html" { "AGPL-3.0" } ". "
-                    "Source code is available on " a href="https://github.com/mrdimidium/recluse" { "GitHub" } ". "
+                    "Source code is available on " a href="https://github.com/dimidiumlabs/recluse" { "GitHub" } ". "
                     "A list of dependency licenses " a href="/about/licenses" { "is available" } "."
                 }
 
@@ -335,7 +335,7 @@ impl WebController {
 
                 p {
                     "Source code is available on "
-                    a href="https://github.com/mrdimidium/recluse" { "GitHub" }
+                    a href="https://github.com/dimidiumlabs/recluse" { "GitHub" }
                     ". The full license text is included below."
                 }
 

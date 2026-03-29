@@ -13,19 +13,33 @@ is **not** intended for production use.
 ```bash
 sudo apt install curl gnupg
 
-curl -fsSL https://github.com/mrdimidium/recluse/releases/download/dev/public.gpg | sudo gpg --dearmor -o /usr/share/keyrings/recluse.gpg
-echo "deb [signed-by=/usr/share/keyrings/recluse.gpg] https://recluse.hel1.your-objectstorage.com/apt/ dev main" | sudo tee /etc/apt/sources.list.d/recluse.list
+curl -fsSL https://github.com/dimidiumlabs/recluse/releases/download/nightly/public.gpg | sudo gpg --dearmor -o /usr/share/keyrings/recluse.gpg
+echo "deb [signed-by=/usr/share/keyrings/recluse.gpg] https://recluse.hel1.your-objectstorage.com/apt/ nightly main" | sudo tee /etc/apt/sources.list.d/recluse.list
 sudo apt update && sudo apt install recluse
 
 sudo systemctl enable --now recluse
 ```
 
-**Fedora/RedHat:**
+**Fedora/RHEL:**
 
 ```bash
-sudo rpm --import https://github.com/mrdimidium/recluse/releases/download/dev/public.gpg
-sudo dnf config-manager --add-repo https://recluse.hel1.your-objectstorage.com/rpm/
+# DNF5 (Fedora 41+, RHEL 10+)
+sudo dnf config-manager addrepo --from-repofile=https://dimidiumlabs.fsn1.your-objectstorage.com/rpm/recluse-nightly.repo
+
+# DNF4 (Fedora 40 and older, RHEL 8/9)
+sudo curl -o /etc/yum.repos.d/recluse-nightly.repo https://dimidiumlabs.fsn1.your-objectstorage.com/rpm/recluse-nightly.repo
+
 sudo dnf install recluse
+sudo systemctl enable --now recluse
+```
+
+**openSUSE:**
+
+```bash
+sudo rpm --import https://github.com/dimidiumlabs/recluse/releases/download/nightly/public.gpg
+sudo zypper addrepo https://dimidiumlabs.fsn1.your-objectstorage.com/rpm/ recluse-nightly
+sudo zypper refresh
+sudo zypper install recluse
 
 sudo systemctl enable --now recluse
 ```
@@ -35,7 +49,7 @@ sudo systemctl enable --now recluse
 1. Install build dependencies:
     - Fedora/RedHat: `sudo dnf install gcc openssl-devel pkg-config`
     - Debian/Ubuntu: `sudo apt install build-essential libssl-dev pkg-config`
-1. Clone repo: `git clone https://github.com/mrdimidium/recluse.git && cd recluse`
+1. Clone repo: `git clone https://github.com/dimidiumlabs/recluse.git && cd recluse`
 1. Build from source: `cargo build --release`
 1. Install manually
 

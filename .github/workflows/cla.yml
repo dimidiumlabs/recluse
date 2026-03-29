@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
+# Copyright (c) 2026 Nikolay Govorov
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 name: "CLA Assistant"
@@ -27,4 +27,4 @@ jobs:
           branch: "main"
           allowlist: mrdimidium
           path-to-signatures: "LICENSES/cla.json"
-          path-to-document: "https://github.com/mrdimidium/recluse/blob/main/CLA.md"
+          path-to-document: "https://github.com/dimidiumlabs/recluse/blob/main/CLA.md"

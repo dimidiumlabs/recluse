@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
+# Copyright (c) 2026 Nikolay Govorov
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Builds recluse, starts it in a temporary directory, runs smoke tests, cleans up.

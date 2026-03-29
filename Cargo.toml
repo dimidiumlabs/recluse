@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 Nikolay Govorov <me@govorov.online>
+# Copyright (c) 2026 Nikolay Govorov
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 [workspace]
@@ -12,7 +12,7 @@ version = "0.1.0"
 license = "AGPL-3.0-or-later"
 authors = ["Nikolay Govorov <me@govorov.online>"]
 homepage = "https://pkg.earth"
-repository = "https://github.com/mrdimidium/recluse"
+repository = "https://github.com/dimidiumlabs/recluse"
 
 [workspace.dependencies]
 # local dependencies
