@@ -4,7 +4,11 @@
 CARGO_DENY_VERSION = ^0.19
 CARGO_LLVM_COV_VERSION = ^0.8
 
-all: fmt clippy test deps licenses
+all: signoff fmt clippy test deps licenses
+
+.PHONY: signoff
+signoff:
+	mise run signoff
 
 .PHONY: setup
 setup:

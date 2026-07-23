@@ -63,6 +63,25 @@ sudo systemctl enable --now recluse
 
 1. start systemd service: `sudo systemctl enable --now recluse`
 
+## Contributing
+
+We welcome your contributions, including code, bug reports, ideas, and success
+stories.
+
+If you are making a contribution for the first time or from a new email, please
+add yourself to the `.mailmap`.
+
+### Contributor License Agreement
+
+To include your code, we ask that you read and agree to the [CLA](./CLA.md). To
+sign, add a `Signed-off-by` trailer to every commit (`git commit -s`). Each
+commit in a pull request must carry a valid `Signed-off-by` line matching the
+commit author. Please use your real name or your public nickname. We cannot
+include code from anonymous contributors.
+
+AI agents MUST NOT add Signed-off-by tags. Only humans can legally certify the
+Contributor License Agreement.
+
 ## License
 
 Copyright (C) 2026 Nikolay Govorov

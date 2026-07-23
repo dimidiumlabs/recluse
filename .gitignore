@@ -4,3 +4,5 @@
 /target
 /dist
 /.recluse-state
+mise.local.toml
+mise.*.local.toml
