@@ -1,10 +1,12 @@
 # Copyright (c) 2026 Nikolay Govorov
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-CARGO_DENY_VERSION = ^0.19
 CARGO_LLVM_COV_VERSION = ^0.8
 
-all: signoff fmt clippy test deps licenses
+all: legal fmt clippy test
+
+.PHONY: legal
+legal: signoff licenses
 
 .PHONY: signoff
 signoff:
@@ -12,21 +14,18 @@ signoff:
 
 .PHONY: setup
 setup:
-	cargo install \
-		cargo-deny@$(CARGO_DENY_VERSION) \
-		cargo-llvm-cov@$(CARGO_LLVM_COV_VERSION)
+	cargo install cargo-llvm-cov@$(CARGO_LLVM_COV_VERSION)
 
 .PHONY: licenses
 licenses:
-	reuse lint
+	mise run licenses
 
 .PHONY: fmt
 fmt:
 	cargo fmt --all --check
 
 .PHONY: deps
-deps:
-	cargo deny check
+deps: licenses
 
 .PHONY: clippy
 clippy:
