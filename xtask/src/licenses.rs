@@ -568,13 +568,12 @@ fn generate(nfos: &[KrateLicense<'_>]) -> LicenseList {
     }
 
     let mut licenses: Vec<_> = licenses_map
-        .into_iter()
-        .flat_map(|(_, v)| v.into_values())
+        .into_values()
+        .flat_map(|v| v.into_values())
         .collect();
 
     for lic in &mut licenses {
-        lic.used_by
-            .sort_by(|a, b| a.krate.name.len().cmp(&b.krate.name.len()));
+        lic.used_by.sort_by_key(|used| used.krate.name.len());
     }
 
     licenses.sort_by(|a, b| a.id.cmp(&b.id));
