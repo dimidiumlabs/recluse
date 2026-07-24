@@ -6,6 +6,34 @@ min_version = "2026.7.5"
 [settings]
 experimental = true
 
+[tools]
+"aqua:aptly-dev/aptly" = "1.6.3"
+"aqua:taiki-e/cargo-llvm-cov" = "0.8.7"
+gh = "2.96.0"
+jq = "1.8.2"
+nfpm = "2.47.0"
+rclone = "1.74.4"
+rust = { version = "1.97.1", profile = "minimal", components = [
+  "clippy",
+  "llvm-tools-preview",
+  "rustfmt",
+] }
+
+[bootstrap.packages]
+# APT
+"apt:build-essential" = "latest"
+"apt:createrepo-c" = "latest"
+"apt:gnupg" = "latest"
+"apt:libssl-dev" = "latest"
+"apt:pkg-config" = "latest"
+
+# DNF
+"dnf:createrepo_c" = "latest"
+"dnf:gcc" = "latest"
+"dnf:gnupg2" = "latest"
+"dnf:openssl-devel" = "latest"
+"dnf:pkgconf-pkg-config" = "latest"
+
 [task_config]
 dir = "{{cwd}}"
 includes = [

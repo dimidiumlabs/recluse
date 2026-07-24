@@ -46,11 +46,9 @@ sudo systemctl enable --now recluse
 
 ## Build from source
 
-1. Install build dependencies:
-    - Fedora/RedHat: `sudo dnf install gcc openssl-devel pkg-config`
-    - Debian/Ubuntu: `sudo apt install build-essential libssl-dev pkg-config`
 1. Clone repo: `git clone https://github.com/dimidiumlabs/recluse.git && cd recluse`
-1. Build from source: `cargo build --release`
+1. Provision the toolchain and system build dependencies: `mise bootstrap`
+1. Build from source: `mise exec -- cargo build --release`
 1. Install manually
 
     ```bash

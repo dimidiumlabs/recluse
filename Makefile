@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Nikolay Govorov
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-CARGO_LLVM_COV_VERSION = ^0.8
-
 all: legal fmt clippy test
 
 .PHONY: legal
@@ -14,7 +12,7 @@ signoff:
 
 .PHONY: setup
 setup:
-	cargo install cargo-llvm-cov@$(CARGO_LLVM_COV_VERSION)
+	mise bootstrap
 
 .PHONY: licenses
 licenses:

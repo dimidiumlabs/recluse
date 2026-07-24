@@ -21,7 +21,13 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: 2026.7.5
+          experimental: true
+          install: false
+      - name: Install dependencies
+        run: mise bootstrap --locked --yes --update
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
 
       - name: Check formatting
@@ -42,9 +48,13 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
-          components: llvm-tools-preview
+          version: 2026.7.5
+          experimental: true
+          install: false
+      - name: Install dependencies
+        run: mise bootstrap --locked --yes --update
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
 
       - name: Import GPG key
@@ -56,11 +66,6 @@ jobs:
       - run: cargo clippy --all-targets --all-features --release -- -D warnings
       - run: cargo build --release
       - run: cargo test --all-features --release --locked
-
-      - name: Install nfpm
-        run: |
-          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
-          sudo apt update && sudo apt install nfpm
 
       - name: Build packages
         run: |
@@ -80,9 +85,6 @@ jobs:
           GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           NFPM_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-
-      - name: Install tools
-        run: make setup
 
       - name: Generate coverage (lcov)
         run: cargo llvm-cov --all-features --workspace --lcov --output-path coverage.lcov
@@ -111,6 +113,14 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: 2026.7.5
+          experimental: true
+          install: false
+      - name: Install dependencies
+        run: mise bootstrap --locked --yes --update
+
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: binary-amd64
@@ -130,10 +140,14 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Install tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y aptly rclone createrepo-c
+
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: 2026.7.5
+          experimental: true
+          install: false
+      - name: Install dependencies
+        run: mise bootstrap --locked --yes --update
 
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
