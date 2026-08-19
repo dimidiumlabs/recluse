@@ -11,7 +11,6 @@ experimental = true
 "aqua:taiki-e/cargo-llvm-cov" = "0.8.7"
 gh = "2.96.0"
 jq = "1.8.2"
-nfpm = "2.47.0"
 rclone = "1.74.4"
 rust = { version = "1.97.1", profile = "minimal", components = [
   "clippy",
@@ -37,5 +36,5 @@ rust = { version = "1.97.1", profile = "minimal", components = [
 [task_config]
 dir = "{{cwd}}"
 includes = [
-  "git::https://github.com/dimidiumlabs/infra.git//tasks?ref=1934f5fb264ab046031d5d1b61227de2e1f8dde9",
+  "git::https://github.com/dimidiumlabs/infra.git//tasks?ref=9e7330a3e5bde39a87e0ac1b76c9e85db7a6d64a",
 ]

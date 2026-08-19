@@ -57,34 +57,24 @@ jobs:
         run: mise bootstrap --locked --yes --update
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
 
-      - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec #v6.3.0
-        with:
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-
       - run: cargo clippy --all-targets --all-features --release -- -D warnings
       - run: cargo build --release
       - run: cargo test --all-features --release --locked
 
       - name: Build packages
         run: |
-          export SIGNING_PRIVATE_KEY="/tmp/private.asc"
-          printf '%s' "$GPG_PRIVATE_KEY" > $SIGNING_PRIVATE_KEY
-          chmod 600 $SIGNING_PRIVATE_KEY
-
           PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "recluse") | .version')
-          export VERSION="${PKG_VERSION}~nightly.$(git log -1 --format=%ct)"
-          export ARCH=${{ matrix.arch }}
+          VERSION="${PKG_VERSION}~nightly.$(git log -1 --format=%ct)"
 
-          mkdir -p dist/
-          for pkg in deb rpm; do
-            nfpm package --packager $pkg --target dist/
-          done
+          mise run package -- \
+            --version "$VERSION" \
+            --arch "${{ matrix.arch }}" \
+            --output dist \
+            deb rpm
         env:
           GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          NFPM_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Generate coverage (lcov)
         run: cargo llvm-cov --all-features --workspace --lcov --output-path coverage.lcov
