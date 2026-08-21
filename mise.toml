@@ -7,11 +7,9 @@ min_version = "2026.7.5"
 experimental = true
 
 [tools]
-"aqua:aptly-dev/aptly" = "1.6.3"
 "aqua:taiki-e/cargo-llvm-cov" = "0.8.7"
 gh = "2.96.0"
 jq = "1.8.2"
-rclone = "1.74.4"
 rust = { version = "1.97.1", profile = "minimal", components = [
   "clippy",
   "llvm-tools-preview",
@@ -20,11 +18,14 @@ rust = { version = "1.97.1", profile = "minimal", components = [
 
 [bootstrap.packages]
 # APT
+"apt:apt-utils" = "latest"
 "apt:build-essential" = "latest"
+"apt:debsigs" = "latest"
 "apt:createrepo-c" = "latest"
 "apt:gnupg" = "latest"
 "apt:libssl-dev" = "latest"
 "apt:pkg-config" = "latest"
+"apt:rpm" = "latest"
 
 # DNF
 "dnf:createrepo_c" = "latest"
@@ -32,9 +33,10 @@ rust = { version = "1.97.1", profile = "minimal", components = [
 "dnf:gnupg2" = "latest"
 "dnf:openssl-devel" = "latest"
 "dnf:pkgconf-pkg-config" = "latest"
+"dnf:rpm" = "latest"
 
 [task_config]
 dir = "{{cwd}}"
 includes = [
-  "git::https://github.com/dimidiumlabs/infra.git//tasks?ref=9e7330a3e5bde39a87e0ac1b76c9e85db7a6d64a",
+  "git::https://github.com/dimidiumlabs/infra.git//tasks?ref=4a4589fdb968686a7c91b380ff369aba23bd8662",
 ]

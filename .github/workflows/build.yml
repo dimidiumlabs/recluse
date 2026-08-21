@@ -125,6 +125,9 @@ jobs:
     name: Publish nightly build
     runs-on: ubuntu-latest
     needs: [build, smoke]
+    concurrency:
+      group: package-publish-recluse-nightly
+      cancel-in-progress: false
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
@@ -144,17 +147,6 @@ jobs:
           pattern: packages-*
           path: dist
           merge-multiple: true
-
-      # Configure GPG keys
-      - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec #v6.3.0
-        with:
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-      - name: Export GPG public key
-        run: printf '%s' "$GPG_PUBLIC_KEY" > dist/public.gpg
-        env:
-          GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
 
       # Update Github Release
       - name: Update 'nightly' tag
@@ -184,40 +176,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Update APT/RPM repos on s3
-      - name: Create APT repository
+      - name: Publish package repositories
         run: |
-          aptly repo create -distribution="${{ env.RELEASE_TAG }}" -component=main recluse
-          aptly repo add recluse dist/*.deb
-          aptly publish repo -architectures=amd64,arm64 -gpg-key="${{vars.GPG_KEY_ID}}" recluse
-      - name: Create RPM repository
-        run: |
-          mkdir -p rpm-repo
-          cp dist/*.rpm rpm-repo/
-
-          cat > rpm-repo/recluse-nightly.repo << EOF
-          [recluse-nightly]
-          name=Recluse Nightly
-          gpgkey=${{github.server_url}}/${{github.repository}}/releases/download/${{env.RELEASE_TAG}}/public.gpg
-          baseurl=https://${{vars.S3_BUCKET}}.${{vars.S3_ENDPOINT}}/rpm/
-          enabled=1
-          gpgcheck=1
-          EOF
-
-          createrepo_c rpm-repo/
-          gpg --default-key="${{vars.GPG_KEY_ID}}" --detach-sign --armor rpm-repo/repodata/repomd.xml
-      - name: Upload RPM to S3
-        run: |
-          mkdir -p ~/.config/rclone
-          cat > ~/.config/rclone/rclone.conf << EOF
-          [hetzner]
-          type = s3
-          provider = Other
-          acl = public-read
-          endpoint = ${{vars.S3_ENDPOINT}}
-          access_key_id = ${{secrets.S3_ACCESS_KEY_ID}}
-          secret_access_key = ${{secrets.S3_SECRET_ACCESS_KEY}}
-          EOF
-
-          rclone sync rpm-repo/        "hetzner:${{vars.S3_BUCKET}}/rpm/" --progress
-          rclone sync ~/.aptly/public/ "hetzner:${{vars.S3_BUCKET}}/apt/" --progress
+          mise run publish -- \
+            --service recluse \
+            --channel nightly \
+            --input dist \
+            deb rpm
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
+          PACKAGE_KEY_VERSION: ${{ vars.PACKAGE_KEY_VERSION }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
+          S3_PUBLIC_URL: ${{ vars.S3_PUBLIC_URL }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}

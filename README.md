@@ -13,8 +13,8 @@ is **not** intended for production use.
 ```bash
 sudo apt install curl gnupg
 
-curl -fsSL https://github.com/dimidiumlabs/recluse/releases/download/nightly/public.gpg | sudo gpg --dearmor -o /usr/share/keyrings/recluse.gpg
-echo "deb [signed-by=/usr/share/keyrings/recluse.gpg] https://dimidiumlabs.fsn1.your-objectstorage.com/apt/ nightly main" | sudo tee /etc/apt/sources.list.d/recluse.list
+curl -fsSL https://pkg.dimidiumlabs.io/packages.gpg | sudo gpg --dearmor -o /usr/share/keyrings/dimidiumlabs.gpg
+echo "deb [signed-by=/usr/share/keyrings/dimidiumlabs.gpg] https://pkg.dimidiumlabs.io/recluse/apt/ nightly main" | sudo tee /etc/apt/sources.list.d/recluse.list
 sudo apt update && sudo apt install recluse
 
 sudo systemctl enable --now recluse
@@ -24,10 +24,10 @@ sudo systemctl enable --now recluse
 
 ```bash
 # DNF5 (Fedora 41+, RHEL 10+)
-sudo dnf config-manager addrepo --from-repofile=https://dimidiumlabs.fsn1.your-objectstorage.com/rpm/recluse-nightly.repo
+sudo dnf config-manager addrepo --from-repofile=https://pkg.dimidiumlabs.io/recluse/rpm/nightly/recluse-nightly.repo
 
 # DNF4 (Fedora 40 and older, RHEL 8/9)
-sudo curl -o /etc/yum.repos.d/recluse-nightly.repo https://dimidiumlabs.fsn1.your-objectstorage.com/rpm/recluse-nightly.repo
+sudo curl -o /etc/yum.repos.d/recluse-nightly.repo https://pkg.dimidiumlabs.io/recluse/rpm/nightly/recluse-nightly.repo
 
 sudo dnf install recluse
 sudo systemctl enable --now recluse
@@ -36,8 +36,8 @@ sudo systemctl enable --now recluse
 **openSUSE:**
 
 ```bash
-sudo rpm --import https://github.com/dimidiumlabs/recluse/releases/download/nightly/public.gpg
-sudo zypper addrepo https://dimidiumlabs.fsn1.your-objectstorage.com/rpm/ recluse-nightly
+sudo rpm --import https://pkg.dimidiumlabs.io/packages.gpg
+sudo zypper addrepo https://pkg.dimidiumlabs.io/recluse/rpm/nightly/ recluse-nightly
 sudo zypper refresh
 sudo zypper install recluse
 
