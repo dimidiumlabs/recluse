@@ -10,6 +10,7 @@ path = [
   "mise.lock",
 
   "pkg/*.svg",
+  "charts/recluse/templates/*",
 
   "crates/recluse/src/assets/*.svg",
   "crates/recluse/src/assets/*.ico",

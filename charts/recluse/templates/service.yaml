@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Nikolay Govorov
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "recluse.fullname" . }}
+  labels:
+    {{- include "recluse.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "recluse.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+
+# vim: set filetype=helm:

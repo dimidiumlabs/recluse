@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 Nikolay Govorov
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+{{- if not .Values.config.existingConfigMap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "recluse.fullname" . }}
+  labels:
+    {{- include "recluse.labels" . | nindent 4 }}
+data:
+  recluse.toml: |
+    appname = {{ .Values.config.appname | quote }}
+    dirname = "/var/lib/recluse"
+
+    [server]
+    max_body_size = {{ .Values.config.server.maxBodySize | quote }}
+    max_concurrent_requests = {{ .Values.config.server.maxConcurrentRequests }}
+
+    rate_limit_period = {{ .Values.config.server.rateLimitPeriod }}
+    rate_limit_burst_size = {{ .Values.config.server.rateLimitBurstSize }}
+
+    request_timeout = {{ .Values.config.server.requestTimeout }}
+    shutdown_timeout = {{ .Values.config.server.shutdownTimeout }}
+
+    [[listen]]
+    addr = "0.0.0.0:2000"
+    hostnames = {{ .Values.config.hostnames | toJson }}
+
+    {{- range $name, $backend := .Values.config.backends }}
+    [backends.{{ $name }}]
+    enabled = {{ $backend.enabled }}
+    refresh_interval = {{ $backend.refreshInterval }}
+
+    {{- end }}
+    [telemetry.stdout]
+    enabled = {{ .Values.config.log.enabled }}
+    log_level = {{ .Values.config.log.level | quote }}
+    log_format = {{ .Values.config.log.format | quote }}
+    {{- with .Values.config.extra }}
+
+{{ . | indent 4 }}
+    {{- end }}
+{{- end }}
+
+# vim: set filetype=helm:
