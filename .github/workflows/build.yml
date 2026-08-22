@@ -71,7 +71,7 @@ jobs:
               exit 1
             fi
           else
-            VERSION="$PKG_VERSION-nightly.$(git log -1 --format=%ct)"
+            VERSION="$PKG_VERSION~nightly.$(git log -1 --format=%ct)"
           fi
 
           mise run package -- \
