@@ -22,7 +22,6 @@ allow = [
 ]
 exceptions = [
   # The project itself is distributed under the AGPL, but avoid it in dependencies
-  { crate = "xtask", allow = ["AGPL-3.0-or-later"] },
   { crate = "base", allow = ["AGPL-3.0-or-later"] },
   { crate = "repos", allow = ["AGPL-3.0-or-later"] },
   { crate = "smoke", allow = ["AGPL-3.0-or-later"] },

@@ -3,11 +3,28 @@
 
 fn main() {
     println!("cargo::rerun-if-changed=../../Cargo.lock");
-
-    let json =
-        xtask::licenses::generate_json("Cargo.toml").expect("failed to generate licenses JSON");
+    println!("cargo::rerun-if-changed=../../mise.toml");
+    println!("cargo::rerun-if-changed=../../mise.lock");
 
     let out_dir = std::env::var("OUT_DIR").unwrap();
-    std::fs::write(format!("{out_dir}/licenses.json"), json)
-        .expect("failed to write licenses.json");
+    let target = std::env::var("TARGET").unwrap();
+    let output = format!("{out_dir}/licenses.json");
+
+    let status = std::process::Command::new("mise")
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .args([
+            "run",
+            "licenses-json",
+            "--",
+            "--manifest-path",
+            "Cargo.toml",
+            "--output",
+            &output,
+            "--target",
+            &target,
+        ])
+        .status()
+        .expect("failed to run licenses-json task");
+
+    assert!(status.success(), "failed to generate licenses.json");
 }

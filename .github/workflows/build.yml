@@ -10,6 +10,13 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: recluse-build-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RELEASE_TAG: nightly
@@ -30,8 +37,14 @@ jobs:
         run: mise bootstrap --locked --yes --update
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
 
-      - name: Check formatting
+      - name: formatting
         run: cargo fmt --all --check
+
+      - name: shellcheck
+        run: shellcheck pkg/scripts/*.sh tests/smoke/*.sh
+
+      - name: clippy
+        run: cargo clippy --workspace --all-targets --all-features --release --locked -- -D warnings
 
   build:
     name: Build (${{ matrix.arch }})
@@ -57,9 +70,9 @@ jobs:
         run: mise bootstrap --locked --yes --update
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
 
-      - run: cargo clippy --all-targets --all-features --release -- -D warnings
-      - run: cargo build --release
+      - run: cargo clippy --workspace --locked --all-targets --all-features --release -- -D warnings
       - run: cargo test --all-features --release --locked
+      - run: cargo build --package recluse --bin recluse --release --locked
 
       - name: Build packages
         run: |

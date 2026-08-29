@@ -8,9 +8,11 @@ experimental = true
 
 [tools]
 "aqua:taiki-e/cargo-llvm-cov" = "0.8.7"
+"cargo:cargo-about" = "0.8.4"
 gh = "2.96.0"
 jq = "1.8.2"
 rust = { version = "1.97.1", profile = "minimal", components = [ "clippy", "llvm-tools-preview", "rustfmt" ] }
+shellcheck = "0.11.0"
 
 [bootstrap.packages]
 # APT
@@ -34,7 +36,7 @@ rust = { version = "1.97.1", profile = "minimal", components = [ "clippy", "llvm
 [task_config]
 dir = "{{cwd}}"
 includes = [
-  "git::https://github.com/dimidiumlabs/platform.git//tasks?ref=8bc35fe8be889c50db2d1fb4425cc1b4097dc6b8",
+  "git::https://github.com/dimidiumlabs/platform.git//tasks?ref=159ce265b95d655342c378d9aaa7dc14dbf1dfa4",
 ]
 
 [tasks.fmt]
