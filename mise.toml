@@ -10,11 +10,7 @@ experimental = true
 "aqua:taiki-e/cargo-llvm-cov" = "0.8.7"
 gh = "2.96.0"
 jq = "1.8.2"
-rust = { version = "1.97.1", profile = "minimal", components = [
-  "clippy",
-  "llvm-tools-preview",
-  "rustfmt",
-] }
+rust = { version = "1.97.1", profile = "minimal", components = [ "clippy", "llvm-tools-preview", "rustfmt" ] }
 
 [bootstrap.packages]
 # APT
@@ -40,3 +36,28 @@ dir = "{{cwd}}"
 includes = [
   "git::https://github.com/dimidiumlabs/platform.git//tasks?ref=8bc35fe8be889c50db2d1fb4425cc1b4097dc6b8",
 ]
+
+[tasks.fmt]
+run = "cargo fmt --all --check"
+
+[tasks.clippy]
+run = "cargo clippy --all-targets --all-features -- -D warnings"
+
+[tasks.test]
+run = """
+cargo build --release
+cargo test --all-features --release --locked
+"""
+
+[tasks.smoke]
+run = "cargo run -p smoke"
+
+[tasks.smoke-local]
+run = "./tests/smoke/run-local.sh"
+
+[tasks.coverage]
+run = """
+mkdir -p target/coverage/
+cargo llvm-cov --all-features --workspace --lcov --output-path target/coverage/lcov.info
+cargo llvm-cov --all-features --workspace --html --output-dir target/coverage/html
+"""
