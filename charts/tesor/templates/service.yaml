@@ -4,12 +4,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "recluse.fullname" . }}
+  name: {{ include "tesor.fullname" . }}
   labels:
-    {{- include "recluse.labels" . | nindent 4 }}
+    {{- include "tesor.labels" . | nindent 4 }}
 spec:
   selector:
-    {{- include "recluse.selectorLabels" . | nindent 4 }}
+    {{- include "tesor.selectorLabels" . | nindent 4 }}
   ports:
     - name: http
       port: {{ .Values.service.port }}

@@ -1913,51 +1913,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "recluse"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "axum-server",
- "base",
- "bytes",
- "bytesize",
- "chrono",
- "crc32fast",
- "hex",
- "http-body-util",
- "hyper",
- "hyper-tls",
- "hyper-util",
- "maud",
- "opentelemetry",
- "opentelemetry-appender-tracing",
- "opentelemetry-otlp",
- "opentelemetry-semantic-conventions",
- "opentelemetry_sdk",
- "repos",
- "rustls",
- "sd-notify",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-util",
- "toml",
- "tonic",
- "tower",
- "tower-http",
- "tower_governor",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "url",
- "uuid",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2733,6 +2688,51 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "tesor"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "axum-server",
+ "base",
+ "bytes",
+ "bytesize",
+ "chrono",
+ "crc32fast",
+ "hex",
+ "http-body-util",
+ "hyper",
+ "hyper-tls",
+ "hyper-util",
+ "maud",
+ "opentelemetry",
+ "opentelemetry-appender-tracing",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry_sdk",
+ "repos",
+ "rustls",
+ "sd-notify",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util",
+ "toml",
+ "tonic",
+ "tower",
+ "tower-http",
+ "tower_governor",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "url",
+ "uuid",
 ]
 
 [[package]]

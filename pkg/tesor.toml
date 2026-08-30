@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2026 Nikolay Govorov
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# recluse will dutifully indicate its user agent and protocols (for example, source for zig).
+# tesor will dutifully indicate its user agent and protocols (for example, source for zig).
 # Specify your name if you want your instance to be identified.
-appname="recluse"
+appname="tesor"
 
 # Path to the directory for storing state (indexes, caches, statistics).
 # Must be a writable directory.
-dirname="/var/lib/recluse"
+dirname="/var/lib/tesor"
 
 # Common server settings
 [server]
@@ -25,8 +25,8 @@ addr = "0.0.0.0:2025"
 hostnames = ["localhost", "127.0.0.1", "::1"]
 
 # For HTTPS, set tls_cert and tls_key to PEM file paths.
-# tls_crt = "/etc/recluse/cert.pem"
-# tls_key = "/etc/recluse/key.pem"
+# tls_crt = "/etc/tesor/cert.pem"
+# tls_key = "/etc/tesor/key.pem"
 
 # Telemetry configuration
 # Logs to stdout (pretty or json format)
@@ -47,13 +47,13 @@ log_format = "pretty"   # pretty, json
 # log_level = "info"
 #
 # # For gRPC with TLS, specify certificates:
-# # tls_ca = "/etc/recluse/otel-ca.crt"
-# # tls_crt = "/etc/recluse/otel-client.crt"  # for mTLS
-# # tls_key = "/etc/recluse/otel-client.key"  # for mTLS
+# # tls_ca = "/etc/tesor/otel-ca.crt"
+# # tls_crt = "/etc/tesor/otel-client.crt"  # for mTLS
+# # tls_key = "/etc/tesor/otel-client.key"  # for mTLS
 #
 # # HTTP headers for authentication:
 # # [telemetry.otelcol.headers]
 # # Authorization = "Bearer <token>"
 
-# Environment variable RECLUSE_LOG overrides log_level settings.
-# Example: RECLUSE_LOG=debug,sqlx=warn
+# Environment variable TESOR_LOG overrides log_level settings.
+# Example: TESOR_LOG=debug,sqlx=warn

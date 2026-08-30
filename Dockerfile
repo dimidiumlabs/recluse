@@ -7,23 +7,23 @@ ARG ALPINE_DIGEST=sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952b
 ARG DISTROLESS_DIGEST=sha256:a77defd6fedbb3392b175ba8ea3d1c22be963c1597c248c3ba987ddd80bfb512
 
 FROM --platform=$BUILDPLATFORM docker.io/library/alpine:${ALPINE_VERSION}@${ALPINE_DIGEST} AS rootfs
-RUN install -d -m 0750 /rootfs/var/lib/recluse
+RUN install -d -m 0750 /rootfs/var/lib/tesor
 
 FROM gcr.io/distroless/cc-debian13:nonroot@${DISTROLESS_DIGEST}
 
 ARG TARGETARCH
 
-LABEL org.opencontainers.image.source="https://github.com/dimidiumlabs/recluse" \
+LABEL org.opencontainers.image.source="https://git.dimidiumlabs.io/tesor" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
-COPY --chown=root:root --chmod=0755 .container/binary-${TARGETARCH}/recluse /usr/local/bin/recluse
-COPY --from=rootfs --chown=10000:10000 /rootfs/var/lib/recluse /var/lib/recluse
-COPY --chown=root:root pkg/recluse.toml /etc/recluse.toml
-COPY --chown=root:root LICENSE README.md /usr/share/doc/recluse/
+COPY --chown=root:root --chmod=0755 .container/binary-${TARGETARCH}/tesor /usr/local/bin/tesor
+COPY --from=rootfs --chown=10000:10000 /rootfs/var/lib/tesor /var/lib/tesor
+COPY --chown=root:root pkg/tesor.toml /etc/tesor.toml
+COPY --chown=root:root LICENSE README.md /usr/share/doc/tesor/
 
 USER 10000:10000
 EXPOSE 2000
-VOLUME ["/var/lib/recluse"]
+VOLUME ["/var/lib/tesor"]
 
-ENTRYPOINT ["/usr/local/bin/recluse"]
-CMD ["--config=/etc/recluse.toml"]
+ENTRYPOINT ["/usr/local/bin/tesor"]
+CMD ["--config=/etc/tesor.toml"]

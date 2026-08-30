@@ -5,9 +5,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "recluse.fullname" . }}
+  name: {{ include "tesor.fullname" . }}
   labels:
-    {{- include "recluse.labels" . | nindent 4 }}
+    {{- include "tesor.labels" . | nindent 4 }}
 spec:
   accessModes:
     {{- toYaml .Values.persistence.accessModes | nindent 4 }}

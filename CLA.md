@@ -1,4 +1,4 @@
-# Recluse Individual Contributor License Agreement
+# Tesor Individual Contributor License Agreement
 
 Version 1.0
 
@@ -6,7 +6,7 @@ Version 1.0
 > Agreement Version 1.0 licensed under a
 > [Creative Commons Attribution 3.0 Unported License](https://creativecommons.org/licenses/by/3.0/).
 
-Thank you for your interest in contributing to Recluse (the "Project"). In this
+Thank you for your interest in contributing to Tesor (the "Project"). In this
 Agreement, "We" and "Us" mean Nikolay Govorov.
 
 This contributor agreement ("Agreement") documents the rights granted by

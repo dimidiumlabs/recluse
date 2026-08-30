@@ -4,16 +4,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "recluse.fullname" . }}
+  name: {{ include "tesor.fullname" . }}
   labels:
-    {{- include "recluse.labels" . | nindent 4 }}
+    {{- include "tesor.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "recluse.selectorLabels" . | nindent 6 }}
+      {{- include "tesor.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -24,7 +24,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "recluse.selectorLabels" . | nindent 8 }}
+        {{- include "tesor.selectorLabels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -38,12 +38,12 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-        - name: recluse
-          image: {{ include "recluse.image" . | quote }}
+        - name: tesor
+          image: {{ include "tesor.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          args: ["--config=/etc/recluse/recluse.toml"]
+          args: ["--config=/etc/tesor/tesor.toml"]
           ports:
             - name: http
               containerPort: 2000
@@ -65,19 +65,19 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: config
-              mountPath: /etc/recluse/recluse.toml
-              subPath: recluse.toml
+              mountPath: /etc/tesor/tesor.toml
+              subPath: tesor.toml
               readOnly: true
             - name: state
-              mountPath: /var/lib/recluse
+              mountPath: /var/lib/tesor
       volumes:
         - name: config
           configMap:
-            name: {{ default (include "recluse.fullname" .) .Values.config.existingConfigMap }}
+            name: {{ default (include "tesor.fullname" .) .Values.config.existingConfigMap }}
         - name: state
           {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ default (include "recluse.fullname" .) .Values.persistence.existingClaim }}
+            claimName: {{ default (include "tesor.fullname" .) .Values.persistence.existingClaim }}
           {{- else }}
           emptyDir: {}
           {{- end }}

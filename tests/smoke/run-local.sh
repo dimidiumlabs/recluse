@@ -2,25 +2,25 @@
 # SPDX-FileCopyrightText: 2026 Nikolay Govorov
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Starts recluse in a temporary directory, runs smoke tests, cleans up.
-# Expects a prebuilt binary at target/release/recluse (run `cargo build --release` first).
+# Starts tesor in a temporary directory, runs smoke tests, cleans up.
+# Expects a prebuilt binary at target/release/tesor (run `cargo build --release` first).
 #
 # Usage:
 #   ./tests/smoke/run-local.sh          # default port 2025
-#   RECLUSE_PORT=9999 ./tests/smoke/run-local.sh
+#   TESOR_PORT=9999 ./tests/smoke/run-local.sh
 
 set -euo pipefail
 
-BIN="target/release/recluse"
-PORT="${RECLUSE_PORT:-2025}"
+BIN="target/release/tesor"
+PORT="${TESOR_PORT:-2025}"
 BASE_URL="http://127.0.0.1:${PORT}"
 
 TMPDIR="$(mktemp -d)"
-LOGFILE="$TMPDIR/recluse.log"
+LOGFILE="$TMPDIR/tesor.log"
 trap 'kill "$PID" 2>/dev/null; wait "$PID" 2>/dev/null; rm -rf "$TMPDIR"' EXIT
 
 # Write minimal config
-cat > "$TMPDIR/recluse.toml" <<EOF
+cat > "$TMPDIR/tesor.toml" <<EOF
 appname = "smoke"
 dirname = "$TMPDIR/state"
 
@@ -44,10 +44,10 @@ EOF
 
 mkdir -p "$TMPDIR/state"
 
-# Start recluse
-echo "Starting recluse on ${BASE_URL}..."
+# Start tesor
+echo "Starting tesor on ${BASE_URL}..."
 echo "Server log: ${LOGFILE}"
-"$BIN" --config="$TMPDIR/recluse.toml" >"$LOGFILE" 2>&1 &
+"$BIN" --config="$TMPDIR/tesor.toml" >"$LOGFILE" 2>&1 &
 PID=$!
 
 # Wait for index to load (log shows "index refreshed" for each backend)
@@ -58,7 +58,7 @@ for i in $(seq 1 120); do
         break
     fi
     if ! kill -0 "$PID" 2>/dev/null; then
-        echo "recluse exited unexpectedly. Server log:"
+        echo "tesor exited unexpectedly. Server log:"
         cat "$LOGFILE"
         exit 1
     fi
@@ -72,4 +72,4 @@ if ! grep -q "index refreshed" "$LOGFILE" 2>/dev/null; then
 fi
 
 # Run smoke tests
-RECLUSE_URL="${BASE_URL}" cargo run -p smoke
+TESOR_URL="${BASE_URL}" cargo run -p smoke

@@ -4,13 +4,13 @@
 
 set -e
 
-RECLUSE_USER=${RECLUSE_USER:-recluse}
-RECLUSE_GROUP=${RECLUSE_GROUP:-${RECLUSE_USER}}
+TESOR_USER=${TESOR_USER:-tesor}
+TESOR_GROUP=${TESOR_GROUP:-${TESOR_USER}}
 
-if ! getent group "$RECLUSE_GROUP" >/dev/null; then
-  groupadd --system "$RECLUSE_GROUP"
+if ! getent group "$TESOR_GROUP" >/dev/null; then
+  groupadd --system "$TESOR_GROUP"
 fi
 
-if ! getent passwd "$RECLUSE_USER" >/dev/null; then
-  useradd --system --gid "$RECLUSE_GROUP" --no-create-home --shell /usr/sbin/nologin "$RECLUSE_USER"
+if ! getent passwd "$TESOR_USER" >/dev/null; then
+  useradd --system --gid "$TESOR_GROUP" --no-create-home --shell /usr/sbin/nologin "$TESOR_USER"
 fi

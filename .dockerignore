@@ -3,7 +3,7 @@
 
 .git
 .github
-.recluse-state
+.tesor-state
 dist
 target
 *.lcov

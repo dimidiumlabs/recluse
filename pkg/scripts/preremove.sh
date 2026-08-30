@@ -4,7 +4,7 @@
 
 set -e
 
-if [ -x "/bin/systemctl" ] && [ -d /run/systemd/system ] && [ -f /usr/lib/systemd/system/recluse.service ]; then
-  /bin/systemctl stop recluse.service || true
-  /bin/systemctl disable recluse.service || true
+if [ -x "/bin/systemctl" ] && [ -d /run/systemd/system ] && [ -f /usr/lib/systemd/system/tesor.service ]; then
+  /bin/systemctl stop tesor.service || true
+  /bin/systemctl disable tesor.service || true
 fi

@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Nikolay Govorov
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-// Black-box smoke tests for Recluse.
+// Black-box smoke tests for Tesor.
 //
-// Downloads archives from Recluse and upstream, compares sha256 hashes,
+// Downloads archives from Tesor and upstream, compares sha256 hashes,
 // verifies that minisig signatures (Zig) and sha256 checksums (Go) match upstream.
 //
 // Usage:
-//   RECLUSE_URL=https://pkg.earth cargo run -p smoke
+//   TESOR_URL=https://pkg.earth cargo run -p smoke
 
 use sha2::{Digest, Sha256};
 
@@ -198,8 +198,8 @@ fn test_web(r: &mut Runner, base_url: &str) {
                     r.fail(name, &format!("status {status}, expected 200"));
                 } else if !ct.contains("text/html") {
                     r.fail(name, &format!("content-type: {ct}"));
-                } else if !body.contains("Recluse") {
-                    r.fail(name, "body missing \"Recluse\"");
+                } else if !body.contains("Tesor") {
+                    r.fail(name, "body missing \"Tesor\"");
                 } else {
                     r.ok(name);
                 }
@@ -274,11 +274,11 @@ fn test_go(r: &mut Runner, base_url: &str) {
                 r.fetch_bytes(&format!("{base_url}/go/{file}")),
                 r.fetch_bytes(&format!("https://go.dev/dl/{file}")),
             ) {
-                (Ok(recluse), Ok(upstream)) => {
-                    let zh = sha256hex(&recluse);
+                (Ok(tesor), Ok(upstream)) => {
+                    let zh = sha256hex(&tesor);
                     let uh = sha256hex(&upstream);
                     if zh != uh {
-                        r.fail(&name, &format!("recluse={zh} upstream={uh}"));
+                        r.fail(&name, &format!("tesor={zh} upstream={uh}"));
                     } else {
                         r.ok(&name);
                     }
@@ -332,11 +332,11 @@ fn test_zig(r: &mut Runner, base_url: &str) {
                 r.fetch_bytes(&format!("{base_url}/zig/{}", entry.file)),
                 r.fetch_bytes(&zig_upstream_url(entry.file, entry.version)),
             ) {
-                (Ok(recluse), Ok(upstream)) => {
-                    let zh = sha256hex(&recluse);
+                (Ok(tesor), Ok(upstream)) => {
+                    let zh = sha256hex(&tesor);
                     let uh = sha256hex(&upstream);
                     if zh != uh {
-                        r.fail(&name, &format!("recluse={zh} upstream={uh}"));
+                        r.fail(&name, &format!("tesor={zh} upstream={uh}"));
                     } else {
                         r.ok(&name);
                     }
@@ -348,11 +348,11 @@ fn test_zig(r: &mut Runner, base_url: &str) {
         // Signature: compare .minisig with upstream
         {
             let name = format!("zig: {}.minisig matches upstream", entry.file);
-            let recluse_url = format!("{base_url}/zig/{}.minisig", entry.file);
+            let tesor_url = format!("{base_url}/zig/{}.minisig", entry.file);
             let upstream_url = format!("{}.minisig", zig_upstream_url(entry.file, entry.version));
-            match (r.fetch_bytes(&recluse_url), r.fetch_bytes(&upstream_url)) {
-                (Ok(recluse), Ok(upstream)) => {
-                    if recluse != upstream {
+            match (r.fetch_bytes(&tesor_url), r.fetch_bytes(&upstream_url)) {
+                (Ok(tesor), Ok(upstream)) => {
+                    if tesor != upstream {
                         r.fail(&name, "minisig content differs from upstream");
                     } else {
                         r.ok(&name);
@@ -374,11 +374,11 @@ fn test_zig(r: &mut Runner, base_url: &str) {
 }
 
 fn main() {
-    let base_url = match std::env::var("RECLUSE_URL") {
+    let base_url = match std::env::var("TESOR_URL") {
         Ok(url) => url,
         Err(_) => {
-            eprintln!("Error: RECLUSE_URL environment variable is not set.");
-            eprintln!("Usage: RECLUSE_URL=https://pkg.earth cargo run -p smoke");
+            eprintln!("Error: TESOR_URL environment variable is not set.");
+            eprintln!("Usage: TESOR_URL=https://pkg.earth cargo run -p smoke");
             std::process::exit(1);
         }
     };

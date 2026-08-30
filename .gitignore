@@ -7,4 +7,4 @@ mise.local.toml
 mise.*.local.toml
 
 /.container
-/.recluse-state
+/.tesor-state

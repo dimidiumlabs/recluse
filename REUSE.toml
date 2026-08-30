@@ -10,13 +10,13 @@ path = [
   "mise.lock",
 
   "pkg/*.svg",
-  "charts/recluse/templates/*",
+  "charts/tesor/templates/*",
 
-  "crates/recluse/src/assets/*.svg",
-  "crates/recluse/src/assets/*.ico",
-  "crates/recluse/src/assets/*.png",
-  "crates/recluse/src/assets/robots.txt",
-  "crates/recluse/src/assets/manifest.webmanifest",
+  "crates/tesor/src/assets/*.svg",
+  "crates/tesor/src/assets/*.ico",
+  "crates/tesor/src/assets/*.png",
+  "crates/tesor/src/assets/robots.txt",
+  "crates/tesor/src/assets/manifest.webmanifest",
 ]
 SPDX-FileCopyrightText = "2026 Nikolay Govorov"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
@@ -37,8 +37,8 @@ SPDX-License-Identifier = "CC-BY-3.0"
 
 [[annotations]]
 path = [
-  "crates/recluse/src/assets/jetbrainsmono/OFL.txt",
-  "crates/recluse/src/assets/jetbrainsmono/*.woff2",
+  "crates/tesor/src/assets/jetbrainsmono/OFL.txt",
+  "crates/tesor/src/assets/jetbrainsmono/*.woff2",
 ]
 SPDX-FileCopyrightText = "Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)"
 SPDX-License-Identifier = "OFL-1.1"

@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 [package]
-name = "recluse"
-description = "recluse web-server and daemon"
+name = "tesor"
+description = "tesor web-server and daemon"
 version.workspace = true
 
 authors.workspace = true

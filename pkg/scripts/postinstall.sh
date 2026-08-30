@@ -4,7 +4,7 @@
 
 set -e
 
-if [ -x "/bin/systemctl" ] && [ -d /run/systemd/system ] && [ -f /usr/lib/systemd/system/recluse.service ]; then
+if [ -x "/bin/systemctl" ] && [ -d /run/systemd/system ] && [ -f /usr/lib/systemd/system/tesor.service ]; then
   /bin/systemctl daemon-reload
-  /bin/systemctl enable recluse
+  /bin/systemctl enable tesor
 fi

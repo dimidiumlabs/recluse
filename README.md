@@ -1,4 +1,4 @@
-# Recluse — tiny packages caching proxy
+# Tesor — tiny packages caching proxy
 
 Soon humanity will go to Mars and in order for the colonists to be able
 to program, we will need a local mirror of packages.
@@ -14,52 +14,52 @@ is **not** intended for production use.
 sudo apt install curl gnupg
 
 curl -fsSL https://pkg.dimidiumlabs.io/packages.gpg | sudo gpg --dearmor -o /usr/share/keyrings/dimidiumlabs.gpg
-echo "deb [signed-by=/usr/share/keyrings/dimidiumlabs.gpg] https://pkg.dimidiumlabs.io/recluse/apt/ nightly main" | sudo tee /etc/apt/sources.list.d/recluse.list
-sudo apt update && sudo apt install recluse
+echo "deb [signed-by=/usr/share/keyrings/dimidiumlabs.gpg] https://pkg.dimidiumlabs.io/tesor/apt/ nightly main" | sudo tee /etc/apt/sources.list.d/tesor.list
+sudo apt update && sudo apt install tesor
 
-sudo systemctl enable --now recluse
+sudo systemctl enable --now tesor
 ```
 
 **Fedora/RHEL:**
 
 ```bash
 # DNF5 (Fedora 41+, RHEL 10+)
-sudo dnf config-manager addrepo --from-repofile=https://pkg.dimidiumlabs.io/recluse/rpm/nightly/recluse-nightly.repo
+sudo dnf config-manager addrepo --from-repofile=https://pkg.dimidiumlabs.io/tesor/rpm/nightly/tesor-nightly.repo
 
 # DNF4 (Fedora 40 and older, RHEL 8/9)
-sudo curl -o /etc/yum.repos.d/recluse-nightly.repo https://pkg.dimidiumlabs.io/recluse/rpm/nightly/recluse-nightly.repo
+sudo curl -o /etc/yum.repos.d/tesor-nightly.repo https://pkg.dimidiumlabs.io/tesor/rpm/nightly/tesor-nightly.repo
 
-sudo dnf install recluse
-sudo systemctl enable --now recluse
+sudo dnf install tesor
+sudo systemctl enable --now tesor
 ```
 
 **openSUSE:**
 
 ```bash
 sudo rpm --import https://pkg.dimidiumlabs.io/packages.gpg
-sudo zypper addrepo https://pkg.dimidiumlabs.io/recluse/rpm/nightly/ recluse-nightly
+sudo zypper addrepo https://pkg.dimidiumlabs.io/tesor/rpm/nightly/ tesor-nightly
 sudo zypper refresh
-sudo zypper install recluse
+sudo zypper install tesor
 
-sudo systemctl enable --now recluse
+sudo systemctl enable --now tesor
 ```
 
 ## Build from source
 
-1. Clone repo: `git clone https://github.com/dimidiumlabs/recluse.git && cd recluse`
+1. Clone repo: `git clone https://git.dimidiumlabs.io/tesor.git && cd tesor`
 1. Provision the toolchain and system build dependencies: `mise bootstrap`
 1. Build from source: `mise exec -- cargo build --release`
 1. Install manually
 
     ```bash
-    sudo groupadd --system recluse
-    sudo useradd --system --gid recluse --no-create-home --shell /usr/sbin/nologin recluse
-    sudo install -m 700 -o recluse ./pkg/recluse.toml     /etc/
-    sudo install -m 755 -o root   ./pkg/recluse.service  /usr/lib/systemd/system
-    sudo install -m 755 -o root   target/release/recluse /usr/local/bin/
+    sudo groupadd --system tesor
+    sudo useradd --system --gid tesor --no-create-home --shell /usr/sbin/nologin tesor
+    sudo install -m 700 -o tesor ./pkg/tesor.toml     /etc/
+    sudo install -m 755 -o root   ./pkg/tesor.service  /usr/lib/systemd/system
+    sudo install -m 755 -o root   target/release/tesor /usr/local/bin/
     ```
 
-1. start systemd service: `sudo systemctl enable --now recluse`
+1. start systemd service: `sudo systemctl enable --now tesor`
 
 ## Contributing
 
@@ -95,7 +95,7 @@ Remember, AI agents should make software better, not worse.
 
 ## Licensing
 
-Recluse source code is licensed under AGPL-3.0-or-later. Documentation is
+Tesor source code is licensed under AGPL-3.0-or-later. Documentation is
 licensed under CC-BY-4.0.
 
 The bundled JetBrains Mono font files are licensed under OFL-1.1.

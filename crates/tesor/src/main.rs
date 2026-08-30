@@ -82,7 +82,7 @@ async fn run_index_refresh<S: BackendSpec>(
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const HELP: &str = "\
-Usage: recluse [--config=<path>]
+Usage: tesor [--config=<path>]
 
 Options:
   --config=<path>    Path to config file (optional)
@@ -134,7 +134,7 @@ async fn main() {
             return;
         }
         if arg == "--version" || arg == "-V" {
-            println!("recluse {VERSION}");
+            println!("tesor {VERSION}");
             return;
         }
         if let Some(path) = arg.strip_prefix("--config=") {
@@ -155,7 +155,7 @@ async fn main() {
     let storage = Arc::new(storage::StorageService::new(config.clone()).await.unwrap());
     let network = Arc::new(proxy::ProxyService::new());
 
-    let source = format!("recluse:{}", config.appname());
+    let source = format!("tesor:{}", config.appname());
     let backends = config.backends();
 
     const REQUEST_ID_HEADER: http::HeaderName = http::HeaderName::from_static("x-request-id");
@@ -331,7 +331,7 @@ async fn main() {
         ))
         .layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
             http::header::SERVER,
-            http::HeaderValue::from_static(concat!("recluse/", env!("CARGO_PKG_VERSION"))),
+            http::HeaderValue::from_static(concat!("tesor/", env!("CARGO_PKG_VERSION"))),
         ));
 
     let mut tasks = tokio::task::JoinSet::new();
