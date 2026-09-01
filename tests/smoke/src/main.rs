@@ -200,6 +200,11 @@ fn test_web(r: &mut Runner, base_url: &str) {
                     r.fail(name, &format!("content-type: {ct}"));
                 } else if !body.contains("Tesor") {
                     r.fail(name, "body missing \"Tesor\"");
+                } else if !body.contains("/-/assets/global.css")
+                    || !body.contains("/-/assets/app.css")
+                    || !body.contains("/-/assets/manifest.webmanifest")
+                {
+                    r.fail(name, "body missing shared asset URLs");
                 } else {
                     r.ok(name);
                 }
@@ -208,30 +213,42 @@ fn test_web(r: &mut Runner, base_url: &str) {
         }
     }
 
-    {
-        let name = "GET /base.css returns css";
-        match r.fetch_text(&format!("{base_url}/base.css")) {
+    for (path, expected) in [
+        ("/-/assets/global.css", "IBM Plex Sans"),
+        ("/-/assets/app.css", "--color-text"),
+    ] {
+        let name = format!("GET {path} returns css");
+        match r.fetch_text(&format!("{base_url}{path}")) {
             Ok((status, ct, body)) => {
                 if status != 200 {
-                    r.fail(name, &format!("status {status}"));
+                    r.fail(&name, &format!("status {status}"));
                 } else if !ct.contains("text/css") {
-                    r.fail(name, &format!("content-type: {ct}"));
-                } else if body.is_empty() {
-                    r.fail(name, "empty body");
+                    r.fail(&name, &format!("content-type: {ct}"));
+                } else if !body.contains(expected) {
+                    r.fail(&name, &format!("body missing {expected:?}"));
                 } else {
-                    r.ok(name);
+                    r.ok(&name);
                 }
             }
-            Err(e) => r.fail(name, &e),
+            Err(e) => r.fail(&name, &e),
         }
     }
 
-    {
-        let name = "GET /favicon.ico returns icon";
-        match r.fetch_status(&format!("{base_url}/favicon.ico")) {
-            Ok(200) => r.ok(name),
-            Ok(s) => r.fail(name, &format!("status {s}")),
-            Err(e) => r.fail(name, &e),
+    for path in [
+        "/favicon.ico",
+        "/apple-touch-icon.png",
+        "/robots.txt",
+        "/-/assets/favicon.svg",
+        "/-/assets/manifest.webmanifest",
+        "/-/assets/icon-192.png",
+        "/-/assets/icon-512.png",
+        "/-/assets/fonts/ibm-plex-math-1.1.0-regular.woff2",
+    ] {
+        let name = format!("GET {path} returns an asset");
+        match r.fetch_status(&format!("{base_url}{path}")) {
+            Ok(200) => r.ok(&name),
+            Ok(s) => r.fail(&name, &format!("status {s}")),
+            Err(e) => r.fail(&name, &e),
         }
     }
 

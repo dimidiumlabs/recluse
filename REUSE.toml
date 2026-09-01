@@ -34,11 +34,3 @@ path = [
 ]
 SPDX-FileCopyrightText = "2026 Nikolay Govorov"
 SPDX-License-Identifier = "CC-BY-3.0"
-
-[[annotations]]
-path = [
-  "crates/tesor/src/assets/jetbrainsmono/OFL.txt",
-  "crates/tesor/src/assets/jetbrainsmono/*.woff2",
-]
-SPDX-FileCopyrightText = "Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)"
-SPDX-License-Identifier = "OFL-1.1"

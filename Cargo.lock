@@ -597,9 +597,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "dimidiumlabs-server"
+version = "0.1.0"
+source = "git+https://git.dimidiumlabs.io/platform.git?rev=886b9ef77de4bedb1f938e8e495fb5be4d344e41#886b9ef77de4bedb1f938e8e495fb5be4d344e41"
+dependencies = [
+ "axum",
+ "crc32fast",
+ "dimidiumlabs-ui",
+ "tower",
+]
+
+[[package]]
+name = "dimidiumlabs-ui"
+version = "0.1.0"
+source = "git+https://git.dimidiumlabs.io/platform.git?rev=886b9ef77de4bedb1f938e8e495fb5be4d344e41#886b9ef77de4bedb1f938e8e495fb5be4d344e41"
+dependencies = [
+ "dimidiumlabs-ui-build",
+ "maud",
+]
+
+[[package]]
 name = "dimidiumlabs-ui-build"
 version = "0.1.0"
-source = "git+https://git.dimidiumlabs.io/platform.git?rev=45075fe2b82129bd87013a86f7a03dc76f95bffc#45075fe2b82129bd87013a86f7a03dc76f95bffc"
+source = "git+https://git.dimidiumlabs.io/platform.git?rev=886b9ef77de4bedb1f938e8e495fb5be4d344e41#886b9ef77de4bedb1f938e8e495fb5be4d344e41"
 dependencies = [
  "lightningcss",
  "oxc",
@@ -3688,6 +3708,8 @@ dependencies = [
  "bytesize",
  "chrono",
  "crc32fast",
+ "dimidiumlabs-server",
+ "dimidiumlabs-ui",
  "dimidiumlabs-ui-build",
  "hex",
  "http-body-util",

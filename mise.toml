@@ -36,7 +36,7 @@ shellcheck = "0.11.0"
 [task_config]
 dir = "{{cwd}}"
 includes = [
-  "git::https://git.dimidiumlabs.io/platform.git//tasks?ref=159ce265b95d655342c378d9aaa7dc14dbf1dfa4",
+  "git::https://git.dimidiumlabs.io/platform.git//tasks?ref=886b9ef77de4bedb1f938e8e495fb5be4d344e41",
 ]
 
 [tasks.fmt]

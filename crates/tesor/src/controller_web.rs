@@ -1,25 +1,22 @@
 // SPDX-FileCopyrightText: 2026 Nikolay Govorov
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::{Arc, LazyLock};
-use std::task::{Context, Poll};
 
-use axum::body::Body;
-use axum::http::{HeaderValue, Method, Request, Response, StatusCode, header};
-use axum::{extract, routing};
+use axum::extract;
+use dimidiumlabs_server::{AssetCatalog, UiLayer};
+use dimidiumlabs_ui::{
+    APP_STYLESHEET_PATH, APPLE_TOUCH_ICON_PATH, Asset, CachePolicy, Document, FAVICON_ICO_PATH,
+    FAVICON_SVG_PATH, MANIFEST_PATH, ROBOTS_PATH, css, image,
+};
 use maud::{Markup, Render};
 use serde::Deserialize;
-use tower::{Layer, Service};
 use tracing::error;
 
-use base::ContentType;
 use repos::{GoBackend, ZigBackend};
 
 use crate::ui::{
     STYLESHEET,
-    components::Document,
     pages::{
         GoRelease, GoReleaseFile, IndexPage, LicenseEntry as PageLicenseEntry,
         LicenseOverview as PageLicenseOverview, LicenseUse, LicensesPage, ZigRelease,
@@ -27,43 +24,48 @@ use crate::ui::{
     },
 };
 
-fn get_asset(path: &str) -> Option<(&'static [u8], ContentType)> {
-    Some(match path {
-        "base.css" => (STYLESHEET, ContentType::TextCss),
-        "favicon.svg" => (
+fn application_assets() -> Vec<Asset> {
+    vec![
+        css(APP_STYLESHEET_PATH, STYLESHEET),
+        image(
+            FAVICON_SVG_PATH,
+            "image/svg+xml",
             include_bytes!("assets/favicon.svg"),
-            ContentType::ImageSvgXml,
         ),
-        "favicon.ico" => (
+        image(
+            FAVICON_ICO_PATH,
+            "image/x-icon",
             include_bytes!("assets/favicon.ico"),
-            ContentType::ImageXIcon,
         ),
-        "favicon-192.png" | "apple-touch-icon.png" => (
+        image(
+            APPLE_TOUCH_ICON_PATH,
+            "image/png",
             include_bytes!("assets/favicon-192.png"),
-            ContentType::ImagePng,
         ),
-        "favicon-512.png" => (
+        image(
+            "/-/assets/icon-192.png",
+            "image/png",
+            include_bytes!("assets/favicon-192.png"),
+        ),
+        image(
+            "/-/assets/icon-512.png",
+            "image/png",
             include_bytes!("assets/favicon-512.png"),
-            ContentType::ImagePng,
         ),
-        "manifest.webmanifest" => (
+        Asset::embedded(
+            MANIFEST_PATH,
+            "application/manifest+json",
             include_bytes!("assets/manifest.webmanifest"),
-            ContentType::ApplicationManifestJson,
+            CachePolicy::Revalidate,
         ),
-        "jetbrainsmono/JetBrainsMono[wght].woff2" => (
-            include_bytes!("assets/jetbrainsmono/JetBrainsMono[wght].woff2"),
-            ContentType::FontWoff2,
+        Asset::embedded(
+            ROBOTS_PATH,
+            "text/plain; charset=utf-8",
+            include_bytes!("assets/robots.txt"),
+            CachePolicy::Revalidate,
         ),
-        "jetbrainsmono/JetBrainsMono-Italic[wght].woff2" => (
-            include_bytes!("assets/jetbrainsmono/JetBrainsMono-Italic[wght].woff2"),
-            ContentType::FontWoff2,
-        ),
-        "robots.txt" => (include_bytes!("assets/robots.txt"), ContentType::TextPlain),
-        _ => return None,
-    })
+    ]
 }
-
-const CSP: &str = "default-src 'self'; base-uri 'none'; img-src 'self'; font-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'";
 
 #[derive(Deserialize)]
 struct LicenseList {
@@ -120,35 +122,16 @@ impl WebController {
 
 impl WebController {
     pub fn router(self: Arc<Self>) -> axum::Router {
+        let assets = AssetCatalog::new(application_assets())
+            .expect("Tesor UI assets use unique canonical paths")
+            .router::<Arc<Self>>();
+
         axum::Router::new()
             .route("/", axum::routing::get(Self::index))
-            .route("/{*path}", routing::get(Self::assets))
             .route("/about/licenses", axum::routing::get(Self::licenses))
-            .layer(CacheLayer)
-            .layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
-                header::CONTENT_SECURITY_POLICY,
-                HeaderValue::from_static(CSP),
-            ))
-            .with_state(self.clone())
-    }
-
-    async fn assets(extract::Path(path): extract::Path<String>) -> Response<Body> {
-        let Some((data, content_type)) = get_asset(&path) else {
-            return Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::empty())
-                .unwrap();
-        };
-
-        let mut builder = Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, content_type.as_str());
-
-        if matches!(content_type, ContentType::FontWoff2) {
-            builder = builder.header(header::CACHE_CONTROL, "public, max-age=31536000, immutable");
-        }
-
-        builder.body(Body::from(data)).unwrap()
+            .merge(assets)
+            .layer(UiLayer::default())
+            .with_state(self)
     }
 
     async fn index(extract::State(ctrl): extract::State<Arc<Self>>) -> Markup {
@@ -206,10 +189,13 @@ impl WebController {
         } else {
             Vec::new()
         };
-        Document {
-            title: "Tesor — tiny & opinionated packages mirror",
-            content: IndexPage { zig, go }.render(),
-        }
+        Document::new(
+            "Tesor — tiny & opinionated packages mirror",
+            IndexPage { zig, go }.render(),
+        )
+        .with_manifest()
+        .with_svg_icon()
+        .with_apple_touch_icon()
         .render()
     }
 
@@ -243,146 +229,118 @@ impl WebController {
                     .collect(),
             })
             .collect();
-        Document {
-            title: "Third Party Licenses",
-            content: LicensesPage {
+        Document::new(
+            "Third Party Licenses",
+            LicensesPage {
                 project_license: include_str!("../../../LICENSE"),
                 overview,
                 licenses,
             }
             .render(),
-        }
+        )
+        .with_manifest()
+        .with_svg_icon()
+        .with_apple_touch_icon()
         .render()
-    }
-}
-
-#[derive(Clone)]
-struct CacheLayer;
-
-impl<S> Layer<S> for CacheLayer {
-    type Service = CacheService<S>;
-    fn layer(&self, inner: S) -> Self::Service {
-        CacheService { inner }
-    }
-}
-
-#[derive(Clone)]
-struct CacheService<S> {
-    inner: S,
-}
-
-impl<S> Service<Request<Body>> for CacheService<S>
-where
-    S: Service<Request<Body>, Response = Response<Body>> + Clone + Send + 'static,
-    S::Future: Send + 'static,
-    S::Error: Send + 'static,
-{
-    type Response = Response<Body>;
-    type Error = S::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
-
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
-
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let method = req.method().clone();
-        let if_none_match = req.headers().get(header::IF_NONE_MATCH).cloned();
-
-        let mut inner = self.inner.clone();
-        Box::pin(async move {
-            let resp = inner.call(req).await?;
-
-            if !resp.status().is_success() {
-                return Ok(resp);
-            }
-
-            let (parts, body) = resp.into_parts();
-            let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
-
-            let mut hasher = crc32fast::Hasher::new();
-            hasher.update(&bytes);
-            let etag = format!("\"{}\"", hex::encode(hasher.finalize().to_be_bytes()));
-            let etag_header = HeaderValue::from_str(&etag).unwrap();
-            let cache_control = parts
-                .headers
-                .get(header::CACHE_CONTROL)
-                .cloned()
-                .unwrap_or(HeaderValue::from_static("no-cache"));
-
-            if (method == Method::GET || method == Method::HEAD)
-                && if_none_match
-                    .as_ref()
-                    .is_some_and(|v| v.as_bytes() == etag.as_bytes())
-            {
-                let mut resp = Response::builder()
-                    .status(StatusCode::NOT_MODIFIED)
-                    .body(Body::empty())
-                    .unwrap();
-                resp.headers_mut().insert(header::ETAG, etag_header);
-                resp.headers_mut()
-                    .insert(header::CACHE_CONTROL, cache_control);
-                return Ok(resp);
-            }
-
-            let mut resp = Response::from_parts(parts, Body::from(bytes));
-            resp.headers_mut().insert(header::ETAG, etag_header);
-            resp.headers_mut()
-                .entry(header::CACHE_CONTROL)
-                .or_insert(HeaderValue::from_static("no-cache"));
-            Ok(resp)
-        })
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use axum::{
+        body::{Body, to_bytes},
+        http::{Method, Request, StatusCode, header},
+    };
+    use dimidiumlabs_server::DEFAULT_CSP;
+    use dimidiumlabs_ui::GLOBAL_STYLESHEET_PATH;
+    use tower::ServiceExt;
+
     use super::*;
 
     #[test]
-    fn generated_stylesheet_is_served_as_base_css() {
-        let (data, content_type) = get_asset("base.css").expect("base stylesheet");
-        assert_eq!(data, STYLESHEET);
-        assert!(matches!(content_type, ContentType::TextCss));
-
-        let stylesheet = std::str::from_utf8(data).expect("UTF-8 stylesheet");
-        assert!(stylesheet.contains(":root{"), "missing foundation styles");
-        assert!(
-            stylesheet.contains("display:block"),
-            "missing component styles"
-        );
+    fn application_catalog_uses_canonical_asset_paths() {
+        let catalog = AssetCatalog::new(application_assets()).expect("valid catalog");
+        let stylesheet = catalog
+            .get(APP_STYLESHEET_PATH)
+            .expect("application stylesheet");
+        let stylesheet = std::str::from_utf8(stylesheet.bytes()).expect("UTF-8 stylesheet");
+        assert!(stylesheet.contains(":root{"), "missing application theme");
+        assert!(catalog.get("/-/assets/icon-192.png").is_some());
+        assert!(catalog.get("/-/assets/icon-512.png").is_some());
+        assert!(catalog.get(ROBOTS_PATH).is_some());
     }
 
     #[test]
-    fn font_asset_keeps_its_immutable_cache_category() {
-        let (_, content_type) = get_asset("jetbrainsmono/JetBrainsMono[wght].woff2").expect("font");
-        assert!(matches!(content_type, ContentType::FontWoff2));
+    fn generated_license_bundle_includes_embedded_plex_fonts() {
+        let license = LICENSES
+            .licenses
+            .iter()
+            .find(|license| license.id == "OFL-1.1")
+            .expect("OFL license");
+        assert!(
+            license
+                .used_by
+                .iter()
+                .any(|usage| usage.crate_.name == "dimidiumlabs-ui")
+        );
+        assert!(license.text.contains("SIL OPEN FONT LICENSE Version 1.1"));
+    }
+
+    #[test]
+    fn manifest_uses_registered_icon_urls() {
+        let manifest = std::str::from_utf8(include_bytes!("assets/manifest.webmanifest"))
+            .expect("UTF-8 manifest");
+        assert!(manifest.contains("/-/assets/icon-192.png"));
+        assert!(manifest.contains("/-/assets/icon-512.png"));
+        assert!(!manifest.contains("\"/icon-"));
     }
 
     #[tokio::test]
-    async fn stylesheet_keeps_csp_etag_cache_and_head_behavior() {
-        use tower::ServiceExt;
-
+    async fn shared_assets_keep_csp_etag_cache_and_head_behavior() {
         let router = Arc::new(WebController::new(None, None)).router();
         let response = router
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri("/base.css")
+                    .uri(GLOBAL_STYLESHEET_PATH)
                     .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(response.headers()[header::CONTENT_SECURITY_POLICY], CSP);
+        assert_eq!(
+            response.headers()[header::CONTENT_SECURITY_POLICY],
+            DEFAULT_CSP
+        );
         assert_eq!(response.headers()[header::CACHE_CONTROL], "no-cache");
         let etag = response.headers()[header::ETAG].clone();
+
+        let head = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::HEAD)
+                    .uri(GLOBAL_STYLESHEET_PATH)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(head.status(), StatusCode::OK);
+        assert_eq!(head.headers()[header::ETAG], etag);
+        assert!(
+            to_bytes(head.into_body(), usize::MAX)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+
         let cached = router
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri("/base.css")
+                    .uri(GLOBAL_STYLESHEET_PATH)
                     .header(header::IF_NONE_MATCH, &etag)
                     .body(Body::empty())
                     .unwrap(),
@@ -391,67 +349,20 @@ mod tests {
             .unwrap();
         assert_eq!(cached.status(), StatusCode::NOT_MODIFIED);
         assert_eq!(cached.headers()[header::ETAG], etag);
-        assert_eq!(cached.headers()[header::CACHE_CONTROL], "no-cache");
-        let head = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method(Method::HEAD)
-                    .uri("/base.css")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(head.status(), StatusCode::OK);
-        assert_eq!(head.headers()[header::ETAG], etag);
-        let conditional_head = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method(Method::HEAD)
-                    .uri("/base.css")
-                    .header(header::IF_NONE_MATCH, &etag)
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(conditional_head.status(), StatusCode::NOT_MODIFIED);
-        assert_eq!(
-            conditional_head.headers()[header::CACHE_CONTROL],
-            "no-cache"
-        );
+
         let font = router
-            .clone()
             .oneshot(
                 Request::builder()
-                    .uri("/jetbrainsmono/JetBrainsMono[wght].woff2")
+                    .uri("/-/assets/fonts/ibm-plex-mono-variable-1.0.0-roman.woff2")
                     .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
         assert_eq!(font.status(), StatusCode::OK);
+        assert_eq!(font.headers()[header::CONTENT_TYPE], "font/woff2");
         assert_eq!(
             font.headers()[header::CACHE_CONTROL],
-            "public, max-age=31536000, immutable"
-        );
-        let font_etag = font.headers()[header::ETAG].clone();
-        let cached_font = router
-            .oneshot(
-                Request::builder()
-                    .uri("/jetbrainsmono/JetBrainsMono[wght].woff2")
-                    .header(header::IF_NONE_MATCH, &font_etag)
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(cached_font.status(), StatusCode::NOT_MODIFIED);
-        assert_eq!(cached_font.headers()[header::ETAG], font_etag);
-        assert_eq!(
-            cached_font.headers()[header::CACHE_CONTROL],
             "public, max-age=31536000, immutable"
         );
     }
