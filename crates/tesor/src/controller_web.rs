@@ -9,7 +9,7 @@ use std::task::{Context, Poll};
 use axum::body::Body;
 use axum::http::{HeaderValue, Method, Request, Response, StatusCode, header};
 use axum::{extract, routing};
-use maud::{Markup, html};
+use maud::{Markup, Render};
 use serde::Deserialize;
 use tower::{Layer, Service};
 use tracing::error;
@@ -17,9 +17,19 @@ use tracing::error;
 use base::ContentType;
 use repos::{GoBackend, ZigBackend};
 
+use crate::ui::{
+    STYLESHEET,
+    components::Document,
+    pages::{
+        GoRelease, GoReleaseFile, IndexPage, LicenseEntry as PageLicenseEntry,
+        LicenseOverview as PageLicenseOverview, LicenseUse, LicensesPage, ZigRelease,
+        ZigReleaseFile,
+    },
+};
+
 fn get_asset(path: &str) -> Option<(&'static [u8], ContentType)> {
     Some(match path {
-        "base.css" => (include_bytes!("assets/base.css"), ContentType::TextCss),
+        "base.css" => (STYLESHEET, ContentType::TextCss),
         "favicon.svg" => (
             include_bytes!("assets/favicon.svg"),
             ContentType::ImageSvgXml,
@@ -142,9 +152,27 @@ impl WebController {
     }
 
     async fn index(extract::State(ctrl): extract::State<Arc<Self>>) -> Markup {
-        let zig_versions = if let Some(ref backend) = ctrl.zig {
+        let zig = if let Some(ref backend) = ctrl.zig {
             match backend.get_releases().await {
-                Ok(v) => v,
+                Ok(releases) => releases
+                    .into_iter()
+                    .rev()
+                    .map(|release| ZigRelease {
+                        version: release.version,
+                        date: release.meta.date,
+                        docs: release.meta.docs,
+                        std_docs: release.meta.std_docs,
+                        notes: release.meta.notes,
+                        files: release
+                            .files
+                            .into_iter()
+                            .map(|file| ZigReleaseFile {
+                                filename: file.filename,
+                                target: file.meta.target,
+                            })
+                            .collect(),
+                    })
+                    .collect(),
                 Err(e) => {
                     error!("failed to get zig versions: {e}");
                     Vec::new()
@@ -153,10 +181,23 @@ impl WebController {
         } else {
             Vec::new()
         };
-
-        let go_versions = if let Some(ref backend) = ctrl.go {
+        let go = if let Some(ref backend) = ctrl.go {
             match backend.get_releases().await {
-                Ok(v) => v,
+                Ok(releases) => releases
+                    .into_iter()
+                    .rev()
+                    .map(|release| GoRelease {
+                        version: release.version,
+                        stable: release.meta.stable,
+                        files: release
+                            .files
+                            .into_iter()
+                            .map(|file| GoReleaseFile {
+                                filename: file.filename,
+                            })
+                            .collect(),
+                    })
+                    .collect(),
                 Err(e) => {
                     error!("failed to get go versions: {e}");
                     Vec::new()
@@ -165,244 +206,53 @@ impl WebController {
         } else {
             Vec::new()
         };
-
-        WebController::layout(
-            "Tesor — tiny & opinionated packages mirror",
-            html! {
-                h1 { "Tesor — tiny & opinionated packages mirror." }
-
-                p {
-                    r#"This site provides a caching proxy for downloading Zig and Go installation files.
-                    It reduces load on upstream servers and makes your infrastructure more reliable by adding redundancy."#
-                }
-
-                p {
-                    "Tesor is open source software licensed under " a href="https://www.gnu.org/licenses/agpl-3.0.html" { "AGPL-3.0" } ". "
-                    "Source code is available on " a href="https://git.dimidiumlabs.io/tesor" { "Dimidium Labs Git" } ". "
-                    "A list of dependency licenses " a href="/about/licenses" { "is available" } "."
-                }
-
-                h2 { "Usage" }
-
-                p {
-                    "Replace official download URLs with " code { "https://pkg.earth/{tool}/{filename}" } ". "
-                    "Files are cached automatically after the first download."
-                }
-
-                h3 id="zig" {
-                    a href="#zig" { "Zig" }
-                }
-
-                @if !zig_versions.is_empty() {
-                    details {
-                        summary { "Available versions (" (zig_versions.len()) ")" }
-
-                        p { "You can take actual minisig public key at " a href="https://ziglang.org/download/" { "ziglang.org/download" } "." }
-                        table {
-                            thead {
-                                tr {
-                                    th { "Version" }
-                                    th { "Date" }
-                                    th { "Docs" }
-                                    th { "Targets" }
-                                }
-                            }
-                            tbody {
-                                @for v in zig_versions.iter().rev() {
-                                    tr {
-                                        td { (v.version) }
-                                        td { (v.meta.date.as_deref().unwrap_or("-")) }
-                                        td {
-                                            @if let Some(ref url) = v.meta.docs {
-                                                a href=(url) { "docs" }
-                                            }
-                                            " "
-                                            @if let Some(ref url) = v.meta.std_docs {
-                                                a href=(url) { "std" }
-                                            }
-                                            " "
-                                            @if let Some(ref url) = v.meta.notes {
-                                                a href=(url) { "notes" }
-                                            }
-                                        }
-                                        td {
-                                            @for file in &v.files {
-                                                a href=(format!("/zig/{}", file.filename)) { (&file.meta.target) }
-                                                " "
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                p {
-                    "Read more about community mirrors in the " a href="https://ziglang.org/download/community-mirrors/" { "blog post" } ". "
-                    "Information on how to deploy your own mirror is available " a href="https://github.com/ziglang/www.ziglang.org/blob/main/MIRRORS.md" { "in the documentation" } "."
-                }
-
-                p {
-                    "For simplicity, you can use tools like " a href="https://github.com/prantlf/zigup" { "prantlf/zigup" }
-                    " and " a href="https://github.com/mlugg/setup-zig" { "mlugg/setup-zig" } "."
-                }
-
-                p {
-                    "To install manually:"
-                    ol {
-                        li { "download zig dist file:" br; code { "wget https://pkg.earth/zig/zig-x86_64-linux-0.15.1.tar.xz" } ";" }
-                        li { "download zig minisig file:" br; code { "wget https://pkg.earth/zig/zig-x86_64-linux-0.15.1.tar.xz.minisig" } ";" }
-                        li { "check archive integrity:" br; code { "minisign -Vm zig-x86_64-linux-0.15.1.tar.xz -P RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U" } ";" }
-                        li { "unpack archive:" br; code { "tar -xf 'zig-x86_64-linux-0.15.1.tar.xz'" } ";" }
-                        li { "check installed zig:" br; code { "./zig-x86_64-linux-0.15.1/zig --version" } ";" }
-                    }
-                }
-
-                h3 id="go" { a href="#go" { "Go" } }
-
-                @if !go_versions.is_empty() {
-                    details {
-                        summary { "Available versions (" (go_versions.len()) ")" }
-
-                        p { "You can find available versions at " a href="https://go.dev/dl/" { "go.dev/dl" } "." }
-                        table {
-                            thead {
-                                tr {
-                                    th { "Version" }
-                                    th { "Stable" }
-                                    th { "Files" }
-                                }
-                            }
-                            tbody {
-                                @for v in go_versions.iter().rev() {
-                                    tr {
-                                        td { (v.version) }
-                                        td { @if v.meta.stable { "✓" } @else { "" } }
-                                        td {
-                                            @for file in &v.files {
-                                                a href=(format!("/go/{}", file.filename)) { (file.filename) }
-                                                " "
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                p { "To install manually:" }
-
-                ol {
-                    li { "download go dist file:" br; code { "wget https://pkg.earth/go/go1.23.0.linux-amd64.tar.gz" } ";" }
-                    li { "download go sha256 file:" br; code { "wget https://pkg.earth/go/go1.23.0.linux-amd64.tar.gz.sha256" } ";" }
-                    li { "check archive integrity:" br; code { "sha256sum -c go1.23.0.linux-amd64.tar.gz.sha256" } ";" }
-                    li { "unpack archive:" br; code { "tar -xzf go1.23.0.linux-amd64.tar.gz" } ";" }
-                    li { "check installed go:" br; code { "./go/bin/go version" } ";" }
-                }
-
-                h2 { "Privacy policy" }
-
-                p { "This mirror is a non-profit project available on a voluntary basis. The author has no plans to fund it." }
-
-                p { r#"Since the mirror is hosted on hardware, we collect access logs to combat bots and brute-force attacks.
-                The logs are used for security purposes and load planning, are not shared with third parties,
-                and are deleted after 30 days."# }
-
-                p { "Third-party analytics systems are not used, same as client-side trackers." }
-            },
-        )
+        Document {
+            title: "Tesor — tiny & opinionated packages mirror",
+            content: IndexPage { zig, go }.render(),
+        }
+        .render()
     }
 
     async fn licenses() -> Markup {
         let data = &*LICENSES;
-
-        WebController::layout(
-            "Third Party Licenses",
-            html! {
-                h1 { "Licenses" }
-
-                h2 { "Tesor" }
-
-                p {
-                    "Tesor is licensed under the " b { "GNU Affero General Public License v3.0 (AGPL-3.0)" } ". "
-                    "This means you are free to use, modify, and distribute the software. "
-                    "If you run a modified version of Tesor as a network service, "
-                    "you must make the source code of your modifications available to its users. "
-                    "The software is provided as-is, without warranty of any kind."
-                }
-
-                p {
-                    "Source code is available on "
-                    a href="https://git.dimidiumlabs.io/tesor" { "Dimidium Labs Git" }
-                    ". The full license text is included below."
-                }
-
-                pre .license-text { (include_str!("../../../LICENSE")) }
-
-                h2 { "Third party licenses" }
-
-                ul {
-                    @for ov in &data.overview {
-                        li { a href=(format!("#{}", ov.id)) { (&ov.name) } " (" (ov.count) ")" }
-                    }
-                }
-
-                @for (i, lic) in data.licenses.iter().enumerate() {
-                    @if lic.first_of_kind {
-                        h3 id=(&lic.id) { (&lic.name) }
-                    }
-
-                    section.license {
-                        h4 id=(format!("{}-{}", lic.id, i)) { (&lic.name) }
-
-                        p { "Used by:" }
-
-                        ul .license-used-by {
-                            @for usage in &lic.used_by {
-                                li {
-                                    a href=(
-                                        usage.crate_.repository.as_deref()
-                                            .unwrap_or(&format!("https://crates.io/crates/{}", usage.crate_.name))
-                                    ) {
-                                        (&usage.crate_.name) "@" (&usage.crate_.version)
-                                    }
-                                }
-                            }
-                        }
-
-                        pre .license-text { (&lic.text) }
-                    }
-                }
-            },
-        )
-    }
-
-    fn layout(title: &str, content: Markup) -> Markup {
-        html! {
-            (maud::DOCTYPE)
-
-            html lang="en" {
-                head {
-                    meta charset="UTF-8";
-                    meta http-equiv="X-UA-Compatible" content="ie=edge";
-                    meta name="viewport" content="width=device-width,initial-scale=1";
-
-                    title { (title) }
-                    link rel="stylesheet" href="/base.css";
-
-                    link rel="manifest" href="/manifest.webmanifest";
-                    link rel="icon" href="/favicon.ico" sizes="32x32";
-                    link rel="icon" href="/favicon.svg" type="image/svg+xml";
-                    link rel="apple-touch-icon" href="/apple-touch-icon.png";
-                }
-
-                body {
-                    article { (content) }
-                }
+        let overview = data
+            .overview
+            .iter()
+            .map(|entry| PageLicenseOverview {
+                id: entry.id.clone(),
+                name: entry.name.clone(),
+                count: entry.count,
+            })
+            .collect();
+        let licenses = data
+            .licenses
+            .iter()
+            .map(|entry| PageLicenseEntry {
+                id: entry.id.clone(),
+                name: entry.name.clone(),
+                text: entry.text.clone(),
+                first_of_kind: entry.first_of_kind,
+                used_by: entry
+                    .used_by
+                    .iter()
+                    .map(|usage| LicenseUse {
+                        name: usage.crate_.name.clone(),
+                        version: usage.crate_.version.clone(),
+                        repository: usage.crate_.repository.clone(),
+                    })
+                    .collect(),
+            })
+            .collect();
+        Document {
+            title: "Third Party Licenses",
+            content: LicensesPage {
+                project_license: include_str!("../../../LICENSE"),
+                overview,
+                licenses,
             }
+            .render(),
         }
+        .render()
     }
 }
 
@@ -482,5 +332,127 @@ where
                 .or_insert(HeaderValue::from_static("no-cache"));
             Ok(resp)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_stylesheet_is_served_as_base_css() {
+        let (data, content_type) = get_asset("base.css").expect("base stylesheet");
+        assert_eq!(data, STYLESHEET);
+        assert!(matches!(content_type, ContentType::TextCss));
+
+        let stylesheet = std::str::from_utf8(data).expect("UTF-8 stylesheet");
+        assert!(stylesheet.contains(":root{"), "missing foundation styles");
+        assert!(
+            stylesheet.contains("display:block"),
+            "missing component styles"
+        );
+    }
+
+    #[test]
+    fn font_asset_keeps_its_immutable_cache_category() {
+        let (_, content_type) = get_asset("jetbrainsmono/JetBrainsMono[wght].woff2").expect("font");
+        assert!(matches!(content_type, ContentType::FontWoff2));
+    }
+
+    #[tokio::test]
+    async fn stylesheet_keeps_csp_etag_cache_and_head_behavior() {
+        use tower::ServiceExt;
+
+        let router = Arc::new(WebController::new(None, None)).router();
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/base.css")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::CONTENT_SECURITY_POLICY], CSP);
+        assert_eq!(response.headers()[header::CACHE_CONTROL], "no-cache");
+        let etag = response.headers()[header::ETAG].clone();
+        let cached = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/base.css")
+                    .header(header::IF_NONE_MATCH, &etag)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(cached.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(cached.headers()[header::ETAG], etag);
+        assert_eq!(cached.headers()[header::CACHE_CONTROL], "no-cache");
+        let head = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::HEAD)
+                    .uri("/base.css")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(head.status(), StatusCode::OK);
+        assert_eq!(head.headers()[header::ETAG], etag);
+        let conditional_head = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::HEAD)
+                    .uri("/base.css")
+                    .header(header::IF_NONE_MATCH, &etag)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(conditional_head.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(
+            conditional_head.headers()[header::CACHE_CONTROL],
+            "no-cache"
+        );
+        let font = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/jetbrainsmono/JetBrainsMono[wght].woff2")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(font.status(), StatusCode::OK);
+        assert_eq!(
+            font.headers()[header::CACHE_CONTROL],
+            "public, max-age=31536000, immutable"
+        );
+        let font_etag = font.headers()[header::ETAG].clone();
+        let cached_font = router
+            .oneshot(
+                Request::builder()
+                    .uri("/jetbrainsmono/JetBrainsMono[wght].woff2")
+                    .header(header::IF_NONE_MATCH, &font_etag)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(cached_font.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(cached_font.headers()[header::ETAG], font_etag);
+        assert_eq!(
+            cached_font.headers()[header::CACHE_CONTROL],
+            "public, max-age=31536000, immutable"
+        );
     }
 }

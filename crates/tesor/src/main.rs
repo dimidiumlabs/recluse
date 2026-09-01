@@ -5,6 +5,7 @@ mod config;
 mod proxy;
 mod storage;
 mod telemetry;
+mod ui;
 
 mod controller_backend;
 mod controller_web;
