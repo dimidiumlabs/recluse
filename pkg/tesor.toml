@@ -17,12 +17,14 @@ max_body_size = "64 MiB"
 max_concurrent_requests = 512
 rate_limit_period = 10
 rate_limit_burst_size = 50
+# CIDR networks allowed to supply X-Forwarded-For. Keep empty for direct use.
+trusted_proxies = []
 
 # Listeners configuration. Each listener has an address and optional hostnames.
 # Empty hostnames means accept all requests (catch-all).
 [[listen]]
 addr = "0.0.0.0:2025"
-hostnames = ["localhost", "127.0.0.1", "::1"]
+hostnames = ["localhost", "127.0.0.1", "[::1]"]
 
 # For HTTPS, set tls_cert and tls_key to PEM file paths.
 # tls_crt = "/etc/tesor/cert.pem"

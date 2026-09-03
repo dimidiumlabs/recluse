@@ -8,4 +8,8 @@ pub(crate) mod classes {
     include!(concat!(env!("OUT_DIR"), "/css_modules.rs"));
 }
 
-pub const STYLESHEET: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/stylesheet.css"));
+mod generated_assets {
+    include!(concat!(env!("OUT_DIR"), "/assets.rs"));
+}
+
+pub const APPLICATION: &[dimidiumlabs_ui::Asset] = generated_assets::APPLICATION;

@@ -4,11 +4,14 @@
 use std::sync::{Arc, LazyLock};
 
 use axum::extract;
-use dimidiumlabs_server::{AssetCatalog, UiLayer};
-use dimidiumlabs_ui::{
-    APP_STYLESHEET_PATH, APPLE_TOUCH_ICON_PATH, Asset, CachePolicy, Document, FAVICON_ICO_PATH,
-    FAVICON_SVG_PATH, MANIFEST_PATH, ROBOTS_PATH, css, image,
+use dimidiumlabs_server::{
+    assets_router,
+    service::{
+        HtmlCompressionPredicate, HtmlLayer,
+        compression::{CompressionLayer, CompressionLevel},
+    },
 };
+use dimidiumlabs_ui::{AssetsCatalog, Document, FOUNDATION};
 use maud::{Markup, Render};
 use serde::Deserialize;
 use tracing::error;
@@ -16,7 +19,7 @@ use tracing::error;
 use repos::{GoBackend, ZigBackend};
 
 use crate::ui::{
-    STYLESHEET,
+    APPLICATION,
     pages::{
         GoRelease, GoReleaseFile, IndexPage, LicenseEntry as PageLicenseEntry,
         LicenseOverview as PageLicenseOverview, LicenseUse, LicensesPage, ZigRelease,
@@ -24,48 +27,18 @@ use crate::ui::{
     },
 };
 
-fn application_assets() -> Vec<Asset> {
-    vec![
-        css(APP_STYLESHEET_PATH, STYLESHEET),
-        image(
-            FAVICON_SVG_PATH,
-            "image/svg+xml",
-            include_bytes!("assets/favicon.svg"),
-        ),
-        image(
-            FAVICON_ICO_PATH,
-            "image/x-icon",
-            include_bytes!("assets/favicon.ico"),
-        ),
-        image(
-            APPLE_TOUCH_ICON_PATH,
-            "image/png",
-            include_bytes!("assets/favicon-192.png"),
-        ),
-        image(
-            "/-/assets/icon-192.png",
-            "image/png",
-            include_bytes!("assets/favicon-192.png"),
-        ),
-        image(
-            "/-/assets/icon-512.png",
-            "image/png",
-            include_bytes!("assets/favicon-512.png"),
-        ),
-        Asset::embedded(
-            MANIFEST_PATH,
-            "application/manifest+json",
-            include_bytes!("assets/manifest.webmanifest"),
-            CachePolicy::Revalidate,
-        ),
-        Asset::embedded(
-            ROBOTS_PATH,
-            "text/plain; charset=utf-8",
-            include_bytes!("assets/robots.txt"),
-            CachePolicy::Revalidate,
-        ),
-    ]
-}
+const DYNAMIC_COMPRESSION_MIN_BYTES: u16 = 128;
+const DYNAMIC_COMPRESSION_LEVEL: CompressionLevel = CompressionLevel::Precise(5);
+
+static ASSETS: LazyLock<Arc<AssetsCatalog>> = LazyLock::new(|| {
+    Arc::new(
+        AssetsCatalog::new()
+            .with(FOUNDATION)
+            .expect("foundation assets are valid")
+            .with(APPLICATION)
+            .expect("Tesor assets are valid and unique"),
+    )
+});
 
 #[derive(Deserialize)]
 struct LicenseList {
@@ -122,16 +95,19 @@ impl WebController {
 
 impl WebController {
     pub fn router(self: Arc<Self>) -> axum::Router {
-        let assets = AssetCatalog::new(application_assets())
-            .expect("Tesor UI assets use unique canonical paths")
-            .router::<Arc<Self>>();
+        let assets = assets_router::<Arc<Self>>(Arc::clone(&ASSETS));
 
-        axum::Router::new()
+        let pages = axum::Router::new()
             .route("/", axum::routing::get(Self::index))
             .route("/about/licenses", axum::routing::get(Self::licenses))
-            .merge(assets)
-            .layer(UiLayer::default())
-            .with_state(self)
+            .layer(HtmlLayer::new(&ASSETS).with_negotiated_compression())
+            .layer(
+                CompressionLayer::new()
+                    .quality(DYNAMIC_COMPRESSION_LEVEL)
+                    .compress_when(HtmlCompressionPredicate::new(DYNAMIC_COMPRESSION_MIN_BYTES)),
+            );
+
+        pages.merge(assets).with_state(self)
     }
 
     async fn index(extract::State(ctrl): extract::State<Arc<Self>>) -> Markup {
@@ -192,6 +168,7 @@ impl WebController {
         Document::new(
             "Tesor — tiny & opinionated packages mirror",
             IndexPage { zig, go }.render(),
+            &ASSETS,
         )
         .with_manifest()
         .with_svg_icon()
@@ -237,6 +214,7 @@ impl WebController {
                 licenses,
             }
             .render(),
+            &ASSETS,
         )
         .with_manifest()
         .with_svg_icon()
@@ -251,23 +229,36 @@ mod tests {
         body::{Body, to_bytes},
         http::{Method, Request, StatusCode, header},
     };
-    use dimidiumlabs_server::DEFAULT_CSP;
-    use dimidiumlabs_ui::GLOBAL_STYLESHEET_PATH;
+    use dimidiumlabs_ui::ASSET_PREFIX;
     use tower::ServiceExt;
 
     use super::*;
 
     #[test]
-    fn application_catalog_uses_canonical_asset_paths() {
-        let catalog = AssetCatalog::new(application_assets()).expect("valid catalog");
-        let stylesheet = catalog
-            .get(APP_STYLESHEET_PATH)
+    fn application_catalog_uses_generated_logical_and_fingerprinted_names() {
+        let stylesheet = ASSETS
+            .lookup("application.css")
             .expect("application stylesheet");
-        let stylesheet = std::str::from_utf8(stylesheet.bytes()).expect("UTF-8 stylesheet");
+        let stylesheet =
+            std::str::from_utf8(stylesheet.asset().bytes()).expect("UTF-8 application stylesheet");
         assert!(stylesheet.contains(":root{"), "missing application theme");
-        assert!(catalog.get("/-/assets/icon-192.png").is_some());
-        assert!(catalog.get("/-/assets/icon-512.png").is_some());
-        assert!(catalog.get(ROBOTS_PATH).is_some());
+        for name in [
+            "favicon.ico",
+            "favicon.svg",
+            "apple-touch-icon.png",
+            "icon-192.png",
+            "icon-512.png",
+            "manifest.webmanifest",
+            "robots.txt",
+        ] {
+            let asset = ASSETS
+                .lookup(name)
+                .expect("registered static asset")
+                .asset();
+            assert!(asset.integrity().starts_with("sha384-"));
+            assert_eq!(asset.name(), asset.fingerprinted_name());
+            assert_eq!(asset.cache(), dimidiumlabs_ui::CachePolicy::Revalidate);
+        }
     }
 
     #[test]
@@ -288,40 +279,134 @@ mod tests {
 
     #[test]
     fn manifest_uses_registered_icon_urls() {
-        let manifest = std::str::from_utf8(include_bytes!("assets/manifest.webmanifest"))
-            .expect("UTF-8 manifest");
+        let manifest = std::str::from_utf8(
+            ASSETS
+                .lookup("manifest.webmanifest")
+                .expect("generated manifest")
+                .asset()
+                .bytes(),
+        )
+        .expect("UTF-8 manifest");
         assert!(manifest.contains("/-/assets/icon-192.png"));
         assert!(manifest.contains("/-/assets/icon-512.png"));
         assert!(!manifest.contains("\"/icon-"));
     }
 
     #[tokio::test]
-    async fn shared_assets_keep_csp_etag_cache_and_head_behavior() {
+    async fn dynamic_html_is_stream_compressed_with_weak_validators() {
         let router = Arc::new(WebController::new(None, None)).router();
         let response = router
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri(GLOBAL_STYLESHEET_PATH)
+                    .uri("/")
+                    .header(header::ACCEPT_ENCODING, "gzip")
                     .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(
-            response.headers()[header::CONTENT_SECURITY_POLICY],
-            DEFAULT_CSP
-        );
-        assert_eq!(response.headers()[header::CACHE_CONTROL], "no-cache");
+        assert_eq!(response.headers()[header::CONTENT_ENCODING], "gzip");
+        assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
         let etag = response.headers()[header::ETAG].clone();
+        assert!(etag.as_bytes().starts_with(b"W/\""));
+        assert!(!response.headers().contains_key(header::CONTENT_LENGTH));
 
         let head = router
             .clone()
             .oneshot(
                 Request::builder()
                     .method(Method::HEAD)
-                    .uri(GLOBAL_STYLESHEET_PATH)
+                    .uri("/")
+                    .header(header::ACCEPT_ENCODING, "br")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(head.status(), StatusCode::OK);
+        assert_eq!(head.headers()[header::CONTENT_ENCODING], "br");
+        assert!(head.headers()[header::ETAG].as_bytes().starts_with(b"W/\""));
+        assert!(!head.headers().contains_key(header::CONTENT_LENGTH));
+        assert!(
+            to_bytes(head.into_body(), usize::MAX)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .uri("/")
+                    .header(header::ACCEPT_ENCODING, "br")
+                    .header(header::IF_NONE_MATCH, &etag)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(response.headers()[header::ETAG], etag);
+        assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
+        assert!(!response.headers().contains_key(header::CONTENT_LENGTH));
+    }
+
+    #[tokio::test]
+    async fn shared_assets_keep_etag_cache_and_head_behavior() {
+        let router = Arc::new(WebController::new(None, None)).router();
+        let stylesheet = ASSETS.lookup("foundation.css").unwrap().asset();
+        let stylesheet_path = format!("{ASSET_PREFIX}/{}", stylesheet.fingerprinted_name());
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(&stylesheet_path)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            response
+                .headers()
+                .get(header::CONTENT_SECURITY_POLICY)
+                .is_none()
+        );
+        assert_eq!(
+            response.headers()[header::CACHE_CONTROL],
+            "public, max-age=31536000, immutable"
+        );
+        let etag = response.headers()[header::ETAG].clone();
+
+        let compressed = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(&stylesheet_path)
+                    .header(header::ACCEPT_ENCODING, "br")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(compressed.status(), StatusCode::OK);
+        assert_eq!(compressed.headers()[header::CONTENT_ENCODING], "br");
+        assert_eq!(compressed.headers()[header::VARY], "Accept-Encoding");
+        assert_ne!(compressed.headers()[header::ETAG], etag);
+        assert_eq!(
+            compressed.headers()[header::CONTENT_LENGTH],
+            stylesheet.brotli().unwrap().bytes().len().to_string()
+        );
+
+        let head = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::HEAD)
+                    .uri(&stylesheet_path)
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -340,7 +425,7 @@ mod tests {
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri(GLOBAL_STYLESHEET_PATH)
+                    .uri(&stylesheet_path)
                     .header(header::IF_NONE_MATCH, &etag)
                     .body(Body::empty())
                     .unwrap(),
@@ -350,10 +435,18 @@ mod tests {
         assert_eq!(cached.status(), StatusCode::NOT_MODIFIED);
         assert_eq!(cached.headers()[header::ETAG], etag);
 
+        let font = ASSETS
+            .assets()
+            .iter()
+            .find(|asset| {
+                asset.name().contains("ibm-plex-mono") && asset.name().ends_with("roman.woff2")
+            })
+            .expect("foundation font");
+        let font_path = format!("{ASSET_PREFIX}/{}", font.fingerprinted_name());
         let font = router
             .oneshot(
                 Request::builder()
-                    .uri("/-/assets/fonts/ibm-plex-mono-variable-1.0.0-roman.woff2")
+                    .uri(font_path)
                     .body(Body::empty())
                     .unwrap(),
             )

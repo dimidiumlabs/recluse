@@ -10,23 +10,33 @@ mod ui;
 mod controller_backend;
 mod controller_web;
 
-use std::future::Future;
-use std::net::{SocketAddr, TcpListener};
+use std::net::SocketAddr;
+use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::task::{Context, Poll};
+use std::time::Duration;
 
 use axum::{
     body::Body,
-    extract::{self, ConnectInfo},
+    extract::ConnectInfo,
     http::{self, Request, Response},
 };
-use axum_server::Handle;
 use axum_server::tls_rustls::RustlsConfig;
+use dimidiumlabs_server::{
+    service::{
+        AdmissionLayer, ClientIp, ClientIpKeyExtractor, ClientIpLayer, DrainLayer, ForwardedHeader,
+        HostLayer, HostPattern, HstsLayer, PeerAddr, RateLimitLayer, TrustedProxies, rate_limit,
+    },
+    transport::HttpTransport,
+};
+use hyper_util::{rt::TokioIo, service::TowerToHyperService};
 #[cfg(target_os = "linux")]
 use sd_notify::NotifyState;
-use tokio::signal;
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    signal,
+};
+use tokio_rustls::TlsAcceptor;
 use tracing::{error, info, trace};
 use tracing_subscriber::registry::LookupSpan;
 
@@ -82,6 +92,14 @@ async fn run_index_refresh<S: BackendSpec>(
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const HTTP_HEADER_READ_TIMEOUT: Duration = Duration::from_secs(10);
+const HTTP1_MAX_BUFFER_BYTES: usize = 32 * 1024;
+const HTTP2_MAX_CONCURRENT_STREAMS: u32 = 128;
+const HTTP2_MAX_HEADER_LIST_BYTES: u32 = 32 * 1024;
+const HTTP2_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(30);
+const HTTP2_KEEP_ALIVE_TIMEOUT: Duration = Duration::from_secs(10);
+const TLS_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
+const HSTS_POLICY: &str = "max-age=63072000; includeSubDomains; preload";
 const HELP: &str = "\
 Usage: tesor [--config=<path>]
 
@@ -95,7 +113,6 @@ Options:
 #[derive(Clone)]
 struct ListenerInfo {
     addr: SocketAddr,
-    hosts: Vec<String>,
 }
 
 /// Request info stored in span extensions for logging
@@ -106,24 +123,6 @@ struct RequestInfo {
     path: http::Uri,
     host: Option<String>,
     user_agent: Option<String>,
-}
-
-/// Key extractor for tower-governor that uses ConnectInfo to get the client IP.
-#[derive(Clone)]
-struct ClientIpKeyExtractor;
-impl tower_governor::key_extractor::KeyExtractor for ClientIpKeyExtractor {
-    type Key = std::net::IpAddr;
-
-    fn name(&self) -> &'static str {
-        "ClientIpKeyExtractor"
-    }
-
-    fn extract<T>(&self, req: &Request<T>) -> Result<Self::Key, tower_governor::GovernorError> {
-        req.extensions()
-            .get::<extract::ConnectInfo<SocketAddr>>()
-            .map(|ci| ci.0.ip())
-            .ok_or(tower_governor::GovernorError::UnableToExtractKey)
-    }
 }
 
 #[tokio::main]
@@ -169,10 +168,7 @@ async fn main() {
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("<invalid>");
             let local_addr = req.extensions().get::<ListenerInfo>().map(|a| a.addr);
-            let remote_addr = req
-                .extensions()
-                .get::<ConnectInfo<SocketAddr>>()
-                .map(|ci| ci.0.ip());
+            let remote_addr = req.extensions().get::<ClientIp>().map(|client| client.0);
 
             tracing::info_span!(
                 "http_request",
@@ -246,12 +242,33 @@ async fn main() {
         )
         .on_failure(tower_http::trace::DefaultOnFailure::new().level(tracing::Level::ERROR));
 
-    let governor_config = tower_governor::governor::GovernorConfigBuilder::default()
-        .period(config.server().rate_limit_period)
-        .burst_size(config.server().rate_limit_burst_size)
-        .key_extractor(ClientIpKeyExtractor)
-        .finish()
-        .unwrap();
+    let rate_limit_config = Arc::new(
+        rate_limit(
+            config.server().rate_limit_period,
+            NonZeroU32::new(config.server().rate_limit_burst_size)
+                .expect("rate-limit burst is validated"),
+            ClientIpKeyExtractor,
+        )
+        .expect("rate-limit policy is validated"),
+    );
+    let admission = AdmissionLayer::new(
+        NonZeroUsize::new(config.server().max_concurrent_requests)
+            .expect("concurrency limit is validated"),
+    );
+    let client_ip = ClientIpLayer::new(TrustedProxies::new(
+        config.server().trusted_proxies.iter().copied(),
+        ForwardedHeader::XForwardedFor,
+    ));
+    let (drain_layer, drain_handle) = DrainLayer::new();
+    let transport = HttpTransport::new(
+        HTTP_HEADER_READ_TIMEOUT,
+        HTTP1_MAX_BUFFER_BYTES,
+        NonZeroU32::new(HTTP2_MAX_CONCURRENT_STREAMS).expect("HTTP/2 stream limit is non-zero"),
+        NonZeroU32::new(HTTP2_MAX_HEADER_LIST_BYTES).expect("HTTP/2 header limit is non-zero"),
+    )
+    .expect("HTTP transport policy is valid")
+    .with_http2_keep_alive(HTTP2_KEEP_ALIVE_INTERVAL, HTTP2_KEEP_ALIVE_TIMEOUT)
+    .expect("HTTP/2 keep-alive policy is valid");
 
     let mut index_tasks = tokio::task::JoinSet::new();
     let index_cancel = tokio_util::sync::CancellationToken::new();
@@ -301,79 +318,77 @@ async fn main() {
         app = app.nest("/go", ctrl.router());
     }
 
-    let app = app
-        // Opt-in layers
-        .layer(tower_http::compression::CompressionLayer::new())
-        // request limits
-        .layer(HostValidationLayer)
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(
-            config.server().max_body_size.as_u64() as usize,
-        ))
-        .layer(tower_http::timeout::TimeoutLayer::with_status_code(
-            http::StatusCode::REQUEST_TIMEOUT,
-            config.server().request_timeout,
-        ))
-        // logging
-        .layer(trace_layer)
-        // rate-limits
-        .layer(tower_governor::GovernorLayer::new(Arc::new(
-            governor_config,
-        )))
-        .layer(tower::limit::ConcurrencyLimitLayer::new(
-            config.server().max_concurrent_requests,
-        ))
-        // global headers
-        .layer(tower_http::request_id::PropagateRequestIdLayer::new(
-            REQUEST_ID_HEADER.clone(),
-        ))
-        .layer(tower_http::request_id::SetRequestIdLayer::new(
-            REQUEST_ID_HEADER.clone(),
-            tower_http::request_id::MakeRequestUuid,
-        ))
-        .layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
-            http::header::SERVER,
-            http::HeaderValue::from_static(concat!("tesor/", env!("CARGO_PKG_VERSION"))),
-        ));
-
     let mut tasks = tokio::task::JoinSet::new();
-    let handle = Handle::new();
+    let server_cancel = tokio_util::sync::CancellationToken::new();
 
     for listener_config in config.listeners() {
-        let std_listener = TcpListener::bind(listener_config.addr).unwrap();
-        std_listener.set_nonblocking(true).unwrap();
+        let listener = tokio::net::TcpListener::bind(listener_config.addr)
+            .await
+            .expect("failed to bind HTTP listener");
+        let addr = listener.local_addr().expect("listener has a local address");
+        let hosts = listener_config
+            .hostnames
+            .iter()
+            .map(|host| HostPattern::new(host))
+            .collect::<Result<Vec<_>, _>>()
+            .expect("listener hostnames are validated");
 
-        let addr = std_listener.local_addr().unwrap();
+        let listener_app = app.clone();
+        let listener_app = if hosts.is_empty() {
+            listener_app
+        } else {
+            listener_app.layer(HostLayer::new(hosts))
+        };
+        let listener_app = listener_app
+            .layer(tower_http::limit::RequestBodyLimitLayer::new(
+                usize::try_from(config.server().max_body_size.as_u64())
+                    .expect("request body limit fits usize"),
+            ))
+            .layer(tower_http::timeout::TimeoutLayer::with_status_code(
+                http::StatusCode::REQUEST_TIMEOUT,
+                config.server().request_timeout,
+            ))
+            .layer(trace_layer.clone())
+            .layer(RateLimitLayer::new(rate_limit_config.clone()))
+            .layer(admission.clone())
+            .layer(client_ip.clone())
+            .layer(drain_layer.clone())
+            .layer(tower_http::request_id::PropagateRequestIdLayer::new(
+                REQUEST_ID_HEADER.clone(),
+            ))
+            .layer(tower_http::request_id::SetRequestIdLayer::new(
+                REQUEST_ID_HEADER.clone(),
+                tower_http::request_id::MakeRequestUuid,
+            ))
+            .layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
+                http::header::SERVER,
+                http::HeaderValue::from_static(concat!("tesor/", env!("CARGO_PKG_VERSION"))),
+            ))
+            .layer(axum::Extension(ListenerInfo { addr }));
 
-        let app = app
-            .clone()
-            .layer(axum::Extension(ListenerInfo {
-                addr,
-                hosts: listener_config.hostnames.clone(),
-            }))
-            .into_make_service_with_connect_info::<SocketAddr>();
-
-        let handle = handle.clone();
-
-        let tls_enabled =
+        let tls =
             if let (Some(crt), Some(key)) = (&listener_config.tls_crt, &listener_config.tls_key) {
                 let rustls_config = RustlsConfig::from_pem_file(crt, key)
                     .await
                     .expect("failed to load TLS config");
-
-                tasks.spawn(async move {
-                    let server = axum_server::from_tcp_rustls(std_listener, rustls_config).unwrap();
-                    server.handle(handle).serve(app).await.unwrap();
-                });
-
-                true
+                Some(TlsAcceptor::from(rustls_config.get_inner()))
             } else {
-                tasks.spawn(async move {
-                    let server = axum_server::from_tcp(std_listener).unwrap();
-                    server.handle(handle).serve(app).await.unwrap();
-                });
-
-                false
+                None
             };
+        let tls_enabled = tls.is_some();
+        let listener_app = if tls_enabled {
+            listener_app.layer(HstsLayer::new(http::HeaderValue::from_static(HSTS_POLICY)))
+        } else {
+            listener_app
+        };
+        let transport = transport.clone();
+        let cancel = server_cancel.clone();
+        tasks.spawn(async move {
+            if let Err(error) = serve_listener(listener, listener_app, transport, tls, cancel).await
+            {
+                error!(%error, %addr, "listener failed");
+            }
+        });
 
         info!(
             "listening {} on {} (hostnames: {})",
@@ -434,6 +449,7 @@ async fn main() {
             },
             _ = watchdog => {
                 trace!("server is alive");
+                rate_limit_config.limiter().retain_recent();
 
                 #[cfg(target_os = "linux")]
                 sd_notify::notify(false, &[NotifyState::Watchdog]).ok();
@@ -455,16 +471,18 @@ async fn main() {
     #[cfg(target_os = "linux")]
     sd_notify::notify(false, &[NotifyState::Stopping]).ok();
 
+    let _ = drain_handle.begin();
+    server_cancel.cancel();
     index_cancel.cancel();
-    handle.graceful_shutdown(None);
 
-    // Wait for all tasks to finish with timeout
+    // Wait for listeners, streaming response bodies, and index tasks to finish.
     let shutdown_result = tokio::time::timeout(config.server().shutdown_timeout, async {
         while let Some(result) = tasks.join_next().await {
             if let Err(e) = result {
                 error!("listener task failed: {e}");
             }
         }
+        drain_handle.wait().await;
         while let Some(result) = index_tasks.join_next().await {
             if let Err(e) = result {
                 error!("index task failed: {e}");
@@ -487,62 +505,76 @@ async fn main() {
     telemetry.shutdown();
 }
 
-/// Layer that validates the Host header against configured hostnames.
-#[derive(Clone)]
-struct HostValidationLayer;
-impl<S> tower::Layer<S> for HostValidationLayer {
-    type Service = HostValidationService<S>;
+async fn serve_listener(
+    listener: tokio::net::TcpListener,
+    app: axum::Router,
+    transport: HttpTransport,
+    tls: Option<TlsAcceptor>,
+    shutdown: tokio_util::sync::CancellationToken,
+) -> std::io::Result<()> {
+    let mut connections = tokio::task::JoinSet::new();
 
-    fn layer(&self, inner: S) -> Self::Service {
-        HostValidationService { inner }
-    }
-}
-
-#[derive(Clone)]
-struct HostValidationService<S> {
-    inner: S,
-}
-impl<S> tower::Service<Request<Body>> for HostValidationService<S>
-where
-    S: tower::Service<Request<Body>, Response = Response<Body>> + Clone + Send + 'static,
-    S::Future: Send,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
-
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
-
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let interface = req.extensions().get::<ListenerInfo>().cloned();
-
-        if let Some(iface) = interface
-            && !iface.hosts.is_empty()
-        {
-            let is_valid = extract_host(&req)
-                .map(|h| {
-                    iface
-                        .hosts
-                        .iter()
-                        .any(|allowed| allowed.eq_ignore_ascii_case(&h))
-                })
-                .unwrap_or(false);
-
-            if !is_valid {
-                return Box::pin(async move {
-                    Ok(Response::builder()
-                        .status(http::StatusCode::MISDIRECTED_REQUEST)
-                        .body(Body::empty())
-                        .unwrap())
+    loop {
+        tokio::select! {
+            () = shutdown.cancelled() => break,
+            accepted = listener.accept() => {
+                let (stream, peer) = accepted?;
+                let app = app
+                    .clone()
+                    .layer(axum::Extension(ConnectInfo(peer)))
+                    .layer(axum::Extension(PeerAddr(peer)));
+                let transport = transport.clone();
+                let tls = tls.clone();
+                let shutdown = shutdown.clone();
+                connections.spawn(async move {
+                    if let Some(tls) = tls {
+                        match tokio::time::timeout(TLS_HANDSHAKE_TIMEOUT, tls.accept(stream)).await {
+                            Ok(Ok(stream)) => serve_connection(stream, app, transport, shutdown).await,
+                            Ok(Err(error)) => trace!(%error, %peer, "TLS handshake failed"),
+                            Err(_) => trace!(%peer, "TLS handshake timed out"),
+                        }
+                    } else {
+                        serve_connection(stream, app, transport, shutdown).await;
+                    }
                 });
             }
+            Some(result) = connections.join_next(), if !connections.is_empty() => {
+                if let Err(error) = result {
+                    error!(%error, "HTTP connection task failed");
+                }
+            }
         }
+    }
 
-        let clone = self.inner.clone();
-        let mut inner = std::mem::replace(&mut self.inner, clone);
-        Box::pin(async move { inner.call(req).await })
+    while let Some(result) = connections.join_next().await {
+        if let Err(error) = result {
+            error!(%error, "HTTP connection task failed");
+        }
+    }
+    Ok(())
+}
+
+async fn serve_connection<IO>(
+    stream: IO,
+    app: axum::Router,
+    transport: HttpTransport,
+    shutdown: tokio_util::sync::CancellationToken,
+) where
+    IO: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let builder = transport.builder();
+    let connection =
+        builder.serve_connection_with_upgrades(TokioIo::new(stream), TowerToHyperService::new(app));
+    tokio::pin!(connection);
+    let result = tokio::select! {
+        result = &mut connection => result,
+        () = shutdown.cancelled() => {
+            connection.as_mut().graceful_shutdown();
+            connection.await
+        }
+    };
+    if let Err(error) = result {
+        trace!(%error, "HTTP connection failed");
     }
 }
 
@@ -565,4 +597,54 @@ fn extract_host(req: &Request<Body>) -> Option<String> {
 
     raw.and_then(|raw| url::Host::parse(raw).ok())
         .map(|h| h.to_string().trim_end_matches('.').to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn shared_transport_serves_with_connection_extensions() {
+        let app = axum::Router::new().route(
+            "/peer",
+            axum::routing::get(
+                |axum::Extension(peer): axum::Extension<PeerAddr>| async move {
+                    peer.0.ip().to_string()
+                },
+            ),
+        );
+        let transport = HttpTransport::new(
+            HTTP_HEADER_READ_TIMEOUT,
+            HTTP1_MAX_BUFFER_BYTES,
+            NonZeroU32::new(HTTP2_MAX_CONCURRENT_STREAMS).unwrap(),
+            NonZeroU32::new(HTTP2_MAX_HEADER_LIST_BYTES).unwrap(),
+        )
+        .unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let shutdown = tokio_util::sync::CancellationToken::new();
+        let server = tokio::spawn(serve_listener(
+            listener,
+            app,
+            transport,
+            None,
+            shutdown.clone(),
+        ));
+
+        let mut stream = tokio::net::TcpStream::connect(address).await.unwrap();
+        stream
+            .write_all(b"GET /peer HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+            .await
+            .unwrap();
+        let mut response = Vec::new();
+        stream.read_to_end(&mut response).await.unwrap();
+        let response = String::from_utf8(response).unwrap();
+        assert!(response.starts_with("HTTP/1.1 200"));
+        assert!(response.ends_with("127.0.0.1"));
+
+        shutdown.cancel();
+        server.await.unwrap().unwrap();
+    }
 }

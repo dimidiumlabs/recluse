@@ -31,7 +31,15 @@ hex = "0.4"
 http-body-util = "0.1"
 hyper = "1.8"
 hyper-tls = "0.6"
-hyper-util = { version = "0.1", features = ["client-legacy", "http1", "http2", "tokio"] }
+ipnet = { version = "2", features = ["serde"] }
+hyper-util = { version = "0.1", features = [
+  "client-legacy",
+  "http1",
+  "http2",
+  "server-auto",
+  "service",
+  "tokio",
+] }
 maud = { version = "0.27", features = ["axum"] }
 rustls = { version = "0.23", default-features = false, features = [
   "ring",
@@ -58,14 +66,17 @@ tokio = { version = "1.49", features = [
   "signal",
   "fs",
   "io-util",
+  "net",
 ] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-util = "0.7"
 toml = "0.9"
 tonic = "0.14"
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.6", features = [
   "trace",
-  "compression-full",
+  "compression-br",
+  "compression-gzip",
   "limit",
   "timeout",
   "request-id",
@@ -73,7 +84,6 @@ tower-http = { version = "0.6", features = [
   "follow-redirect",
   "util",
 ] }
-tower_governor = { version = "0.8", features = ["axum", "tracing"] }
 url = { version = "2.5", features = ["serde"] }
 uuid = { version = "1.19", features = ["v4", "v5"] }
 

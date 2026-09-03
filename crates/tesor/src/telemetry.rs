@@ -27,7 +27,7 @@ use crate::config::{LogLevel, OtelcolConfig, StdoutFormat, TelemetryConfig};
 ///
 /// opentelemetry-appender-tracing intentionally doesn't set timestamp because
 /// tracing doesn't provide it. This causes some backends to show epoch (1970-01-01).
-/// See: https://github.com/open-telemetry/opentelemetry-rust/issues/1479
+/// See: <https://github.com/open-telemetry/opentelemetry-rust/issues/1479>
 #[derive(Debug)]
 struct TimestampLogProcessor<P>(P);
 impl<P: LogProcessor> LogProcessor for TimestampLogProcessor<P> {

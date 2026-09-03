@@ -187,36 +187,65 @@ fn zig_upstream_url(file: &str, version: &str) -> String {
     format!("https://ziglang.org/download/{version}/{file}")
 }
 
+fn fingerprinted_asset_path(document: &str, name: &str, extension: &str) -> Option<String> {
+    let prefix = format!("/-/assets/{name}.");
+    let suffix = format!(".{extension}");
+    document.match_indices(&prefix).find_map(|(start, _)| {
+        let end = start.checked_add(prefix.len() + 16 + suffix.len())?;
+        let path = document.get(start..end)?;
+        let fingerprint = path.strip_prefix(&prefix)?.strip_suffix(&suffix)?;
+        (fingerprint.len() == 16
+            && fingerprint
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase()))
+        .then(|| path.to_owned())
+    })
+}
+
 fn test_web(r: &mut Runner, base_url: &str) {
     println!("\n--- Web ---");
 
-    {
+    let document = {
         let name = "GET / returns html";
         match r.fetch_text(&format!("{base_url}/")) {
             Ok((status, ct, body)) => {
                 if status != 200 {
                     r.fail(name, &format!("status {status}, expected 200"));
+                    None
                 } else if !ct.contains("text/html") {
                     r.fail(name, &format!("content-type: {ct}"));
+                    None
                 } else if !body.contains("Tesor") {
                     r.fail(name, "body missing \"Tesor\"");
-                } else if !body.contains("/-/assets/global.css")
-                    || !body.contains("/-/assets/app.css")
+                    None
+                } else if fingerprinted_asset_path(&body, "foundation", "css").is_none()
+                    || fingerprinted_asset_path(&body, "application", "css").is_none()
                     || !body.contains("/-/assets/manifest.webmanifest")
                 {
                     r.fail(name, "body missing shared asset URLs");
+                    None
                 } else {
                     r.ok(name);
+                    Some(body)
                 }
             }
-            Err(e) => r.fail(name, &e),
+            Err(e) => {
+                r.fail(name, &e);
+                None
+            }
         }
-    }
+    };
 
-    for (path, expected) in [
-        ("/-/assets/global.css", "IBM Plex Sans"),
-        ("/-/assets/app.css", "--color-text"),
+    for (asset, expected) in [
+        (("foundation", "css"), "IBM Plex Sans"),
+        (("application", "css"), "--color-text"),
     ] {
+        let Some(path) = document
+            .as_deref()
+            .and_then(|body| fingerprinted_asset_path(body, asset.0, asset.1))
+        else {
+            continue;
+        };
         let name = format!("GET {path} returns css");
         match r.fetch_text(&format!("{base_url}{path}")) {
             Ok((status, ct, body)) => {

@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use bytesize::ByteSize;
+use ipnet::IpNet;
 use serde::Deserialize;
 use thiserror::Error;
 use tracing::info;
@@ -46,6 +47,15 @@ pub enum ConfigError {
 
     #[error("listener '{0}': TLS key file not found: {1}")]
     TlsKeyNotFound(SocketAddr, PathBuf),
+
+    #[error("server policy '{0}' must not be zero")]
+    ZeroServerPolicy(&'static str),
+
+    #[error("maximum request body size does not fit this platform")]
+    RequestBodyLimitOverflow,
+
+    #[error("listener '{0}': invalid hostname authority '{1}'")]
+    InvalidHostname(SocketAddr, String),
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -70,6 +80,10 @@ pub struct ServerConfig {
 
     /// Rate limit: burst size (max requests allowed in a burst) per client IP
     pub rate_limit_burst_size: u32,
+
+    /// Reverse-proxy networks allowed to supply `X-Forwarded-For`.
+    #[serde(default)]
+    pub trusted_proxies: Vec<IpNet>,
 }
 
 impl Default for ServerConfig {
@@ -81,6 +95,7 @@ impl Default for ServerConfig {
             max_concurrent_requests: 512,
             rate_limit_period: Duration::from_secs(10),
             rate_limit_burst_size: 50,
+            trusted_proxies: Vec::new(),
         }
     }
 }
@@ -291,8 +306,37 @@ impl ConfigService {
             .map_err(|e| ConfigError::NotWritable(self.dirname.clone(), e))?;
         fs::remove_file(&testfile)?;
 
+        for (name, is_zero) in [
+            ("shutdown_timeout", self.server.shutdown_timeout.is_zero()),
+            ("request_timeout", self.server.request_timeout.is_zero()),
+            (
+                "max_concurrent_requests",
+                self.server.max_concurrent_requests == 0,
+            ),
+            ("rate_limit_period", self.server.rate_limit_period.is_zero()),
+            (
+                "rate_limit_burst_size",
+                self.server.rate_limit_burst_size == 0,
+            ),
+        ] {
+            if is_zero {
+                return Err(ConfigError::ZeroServerPolicy(name));
+            }
+        }
+        if usize::try_from(self.server.max_body_size.as_u64()).is_err() {
+            return Err(ConfigError::RequestBodyLimitOverflow);
+        }
+
         // Validate listener configuration
         for listener in &self.listen {
+            for hostname in &listener.hostnames {
+                if hostname.parse::<hyper::http::uri::Authority>().is_err() {
+                    return Err(ConfigError::InvalidHostname(
+                        listener.addr,
+                        hostname.clone(),
+                    ));
+                }
+            }
             match (&listener.tls_crt, &listener.tls_key) {
                 (Some(_crt), None) => {
                     return Err(ConfigError::TlsKeyMissing(listener.addr));
@@ -417,6 +461,7 @@ mod tests {
 
             let cfg = ConfigService::load(None).unwrap();
             assert_eq!(cfg.appname(), "tesor");
+            assert!(cfg.server().trusted_proxies.is_empty());
 
             std::env::set_current_dir(cwd).unwrap();
         }
@@ -443,6 +488,7 @@ mod tests {
                      max_concurrent_requests = 1\n\
                      rate_limit_period = 1\n\
                      rate_limit_burst_size = 1\n\
+                     trusted_proxies = [\"10.2.0.0/16\"]\n\
                      [telemetry]\n\
                      [telemetry.stdout]\n\
                      enabled = true\n\
@@ -460,6 +506,10 @@ mod tests {
 
             let cfg = ConfigService::load(Some(good)).unwrap();
             assert_eq!(cfg.appname(), "ok");
+            assert_eq!(
+                cfg.server().trusted_proxies,
+                vec!["10.2.0.0/16".parse().unwrap()]
+            );
 
             let err = ConfigService::load(Some(missing)).unwrap_err();
             assert!(err.to_string().contains("failed to read"));
@@ -479,6 +529,36 @@ mod tests {
             cfg.appname = "bad name!".to_string();
             let err = cfg.validate().unwrap_err();
             assert!(err.to_string().contains("appname 'bad name!'"));
+        }
+
+        #[test]
+        fn test_validate_rejects_zero_server_policies() {
+            let dir = TempDir::new().unwrap();
+            let mut cfg = base_config(dir.path().to_path_buf());
+            cfg.server.max_concurrent_requests = 0;
+            assert!(matches!(
+                cfg.validate(),
+                Err(ConfigError::ZeroServerPolicy("max_concurrent_requests"))
+            ));
+
+            let dir = TempDir::new().unwrap();
+            let mut cfg = base_config(dir.path().to_path_buf());
+            cfg.server.rate_limit_burst_size = 0;
+            assert!(matches!(
+                cfg.validate(),
+                Err(ConfigError::ZeroServerPolicy("rate_limit_burst_size"))
+            ));
+        }
+
+        #[test]
+        fn test_validate_rejects_invalid_listener_hostname() {
+            let dir = TempDir::new().unwrap();
+            let mut cfg = base_config(dir.path().to_path_buf());
+            cfg.listen[0].hostnames = vec!["bad host".to_string()];
+            assert!(matches!(
+                cfg.validate(),
+                Err(ConfigError::InvalidHostname(_, _))
+            ));
         }
 
         #[test]

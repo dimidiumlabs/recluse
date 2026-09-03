@@ -45,6 +45,9 @@ config:
         maxConcurrentRequests: 512
         rateLimitPeriod: 10
         rateLimitBurstSize: 50
+        # CIDR networks allowed to supply X-Forwarded-For. Keep empty unless
+        # the Service is reachable only through a header-sanitizing proxy.
+        trustedProxies: []
     backends:
         go:
             enabled: true

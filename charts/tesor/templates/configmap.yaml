@@ -19,6 +19,7 @@ data:
 
     rate_limit_period = {{ .Values.config.server.rateLimitPeriod }}
     rate_limit_burst_size = {{ .Values.config.server.rateLimitBurstSize }}
+    trusted_proxies = {{ .Values.config.server.trustedProxies | toJson }}
 
     request_timeout = {{ .Values.config.server.requestTimeout }}
     shutdown_timeout = {{ .Values.config.server.shutdownTimeout }}
