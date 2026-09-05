@@ -595,7 +595,7 @@ dependencies = [
 [[package]]
 name = "dimidiumlabs-server"
 version = "0.1.0"
-source = "git+https://git.dimidiumlabs.io/platform.git?rev=f76e6f87081482b7ff64e0d5b00b7755a62b95e2#f76e6f87081482b7ff64e0d5b00b7755a62b95e2"
+source = "git+https://git.dimidiumlabs.io/platform.git?rev=53c91185b6dfd11cb803e88e1fe200bf6a44960b#53c91185b6dfd11cb803e88e1fe200bf6a44960b"
 dependencies = [
  "arc-swap",
  "axum",
@@ -618,7 +618,7 @@ dependencies = [
 [[package]]
 name = "dimidiumlabs-ui"
 version = "0.1.0"
-source = "git+https://git.dimidiumlabs.io/platform.git?rev=f76e6f87081482b7ff64e0d5b00b7755a62b95e2#f76e6f87081482b7ff64e0d5b00b7755a62b95e2"
+source = "git+https://git.dimidiumlabs.io/platform.git?rev=53c91185b6dfd11cb803e88e1fe200bf6a44960b#53c91185b6dfd11cb803e88e1fe200bf6a44960b"
 dependencies = [
  "dimidiumlabs-ui-build",
  "maud",
@@ -627,7 +627,7 @@ dependencies = [
 [[package]]
 name = "dimidiumlabs-ui-build"
 version = "0.1.0"
-source = "git+https://git.dimidiumlabs.io/platform.git?rev=f76e6f87081482b7ff64e0d5b00b7755a62b95e2#f76e6f87081482b7ff64e0d5b00b7755a62b95e2"
+source = "git+https://git.dimidiumlabs.io/platform.git?rev=53c91185b6dfd11cb803e88e1fe200bf6a44960b#53c91185b6dfd11cb803e88e1fe200bf6a44960b"
 dependencies = [
  "base64 0.22.1",
  "brotli",

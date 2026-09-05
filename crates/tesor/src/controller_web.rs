@@ -5,9 +5,9 @@ use std::sync::{Arc, LazyLock};
 
 use axum::extract;
 use dimidiumlabs_server::{
-    assets_router,
+    HtmlCompressionPredicate, assets_router,
     service::{
-        HtmlCompressionPredicate, HtmlLayer,
+        HtmlLayer,
         compression::{CompressionLayer, CompressionLevel},
     },
 };
