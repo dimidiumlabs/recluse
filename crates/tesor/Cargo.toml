@@ -34,6 +34,7 @@ hyper-tls.workspace = true
 hyper-util.workspace = true
 ipnet.workspace = true
 maud.workspace = true
+openssl.workspace = true
 rustls.workspace = true
 serde.workspace = true
 serde_json.workspace = true

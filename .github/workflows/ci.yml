@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Nikolay Govorov
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - run: ./Mirumfile
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+          GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
+          S3_PUBLIC_URL: ${{ vars.S3_PUBLIC_URL }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+
+          PACKAGE_KEY_VERSION: ${{ vars.PACKAGE_KEY_VERSION }}
